@@ -1,0 +1,5 @@
+* brew tap bbc/audiowaveform
+* brew install audiowaveform
+* bundle
+* update PLAYLIST_ID in server.rb
+* rake

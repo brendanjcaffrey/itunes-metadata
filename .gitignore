@@ -1,0 +1,4 @@
+artwork/*.png
+artwork/*.jpg
+waveforms/*.png
+.DS_Store

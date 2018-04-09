@@ -1,0 +1,380 @@
+<!doctype html>
+<html>
+  <head>
+    <title><%= track.artist %> - <%= track.name %></title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <style type="text/css">
+      body { -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+      input[type="text"] { width: 400px; }
+      .half input[type="text"] { width: 180px; }
+      .half span { display: inline-block; width: 40px; text-align: center; }
+      .genre input[type="text"] { width: 276px; }
+      .genre .dropdown { margin-left: 4px; display: inline-block; }
+      .genre .dropdown button { width: 116px !important; padding: 2px !important; margin-top: -4px !important; }
+      img { width: 125px; height: 125px; }
+      tr.noborder td { border-color: transparent; }
+      div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
+      td div.alert { padding: 8px 0 0 0; }
+      div.waveform-big-container { width: <%= waveform.width %>px; height: <%= waveform.big_height %>px; }
+      img.waveform-big { background: -webkit-image-set( url(/waveform/<%= track_id %>.big.1x.png) 1x, url(/waveform/<%= track_id %>.big.2x.png) 2x); width: <%= waveform.width %>px; height: <%= waveform.big_height %>px; background-position: <%= waveform.width/2 %>px; background-repeat: no-repeat; }
+      div.waveform-big-marker.current-marker { margin-left: <%= waveform.width / 2%>px; }
+      div.waveform-big-marker { width: 2px; height: <%= waveform.big_height %>px; position: absolute; top: 0; }
+      div.waveform-small-container { width: <%= waveform.width %>px; height: <%= waveform.small_height %>px; }
+      img.waveform-small { background: -webkit-image-set( url(/waveform/<%= track_id %>.small.1x.png) 1x, url(/waveform/<%= track_id %>.small.2x.png) 2x); width: <%= waveform.width %>px; height: <%= waveform.small_height %>px; }
+      div.waveform-small-marker { width: 2px; height: <%= waveform.small_height %>px; position: absolute; top: <%= waveform.big_height %>px; }
+      div.current-marker { background-color: black; }
+      div.start-marker, div.finish-marker { background-color: #ffc107; }
+      div#controls { margin: 4px auto; }
+
+      .flash{
+        -moz-animation: flash 0.5s ease-out;
+        -moz-animation-iteration-count: 1;
+        -webkit-animation: flash 0.5s ease-out;
+        -webkit-animation-iteration-count: 1;
+        -ms-animation: flash 0.5s ease-out;
+        -ms-animation-iteration-count: 1;
+      }
+
+      @-webkit-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
+
+      @-moz-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
+
+      @-ms-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      $(document).ready(() => {
+        // update element values
+        function flash(id) {
+          $(id).addClass("flash");
+          setTimeout(() => $(id).removeClass("flash"), 500);
+        }
+        function setValue(ids, value) {
+          if (typeof(ids) == "string") { setValue([ids], value); }
+          ids.forEach((id) => { $(id).val(value); flash(id); });
+        }
+        $("#noalbum").click(() => {
+          setValue(["#track", "#track_count", "#disc", "#disc_count"], "0");
+          setValue(["#album_artist", "#album"], "");
+          $("#clear_artworks").prop("checked", true);
+        });
+        $("#single").click(() => {
+          setValue(["#track", "#track_count", "#disc", "#disc_count"], "0");
+          setValue(["#album_artist"], "");
+        });
+        $("#genre-presets a").click(function() {
+          $("#genre").val(this.text);
+          flash("#genre");
+        });
+
+        // waveforms/audio
+        var bigMouseDown = false;
+        var mouseDownX = -1;
+        var smallHovering = false;
+        var lastHoverX = -1;
+        var savedTime = -1;
+        var playing = false;
+        var audioUpdateInterval = 25; // milliseconds
+        function bigWaveformMouseDown(mouseEvent) {
+          bigMouseDown = true;
+          mouseDownX = mouseEvent.originalEvent.screenX;
+          $(document).bind("mousemove", bigWaveformMouseMove);
+          $(document).bind("mouseup", bigWaveformMouseUp);
+        }
+        function bigWaveformMouseUp() {
+          $(document).unbind("mousemove", bigWaveformMouseMove);
+          $(document).unbind("mouseup", bigWaveformMouseUp);
+          bigMouseDown = false;
+          mouseDownX = -1;
+        }
+        function bigWaveformMouseMove(mouseEvent) {
+          if (!bigMouseDown) { return; }
+          var diff = mouseDownX - mouseEvent.originalEvent.screenX;
+          mouseDownX = mouseEvent.originalEvent.screenX;
+          var diffInSeconds = diff * <%= waveform.big_width_duration %> / <%= waveform.width %>;
+          document.getElementById("audio").currentTime += diffInSeconds;
+          moveToCurrentTime();
+        }
+        function smallWaveformStartedHovering() {
+          smallHovering = true;
+        }
+        function smallWavefromStoppedHovering() {
+          smallHovering = false;
+          lastHoverX = -1;
+          moveToCurrentTime();
+        }
+        function smallWaveformMouseMove(mouseEvent) {
+          if (!smallHovering || bigMouseDown) { return; }
+          lastHoverX = mouseEvent.originalEvent.offsetX;
+          $("#small-marker-current").css("margin-left", "" + mouseEvent.originalEvent.offsetX + "px");
+        }
+        function smallWaveformClick(mouseEvent) {
+          if (!smallHovering || lastHoverX == -1) { return; }
+          var audio = document.getElementById("audio");
+          audio.currentTime = lastHoverX * audio.duration / $("img.waveform-small").width();
+          if (!playing) { moveToCurrentTime(); }
+        }
+        // the timeupdate audio event doesn't fire enough to make the big waveform move smoothly, so we have to do this instead
+        function startedPlaying() {
+          if (savedTime == -1) { $("#play-pause i").removeClass("fa-play").addClass("fa-pause"); }
+          playing = true;
+          moveToCurrentTime();
+        }
+        function stoppedPlaying() {
+          $("#play-pause i").removeClass("fa-pause").addClass("fa-play");
+          playing = false;
+        }
+        function togglePlayPause() {
+          if (savedTime != -1) {
+            $("#play-pause i").removeClass("fa-play").addClass("fa-pause");
+            savedTime = -1;
+            return;
+          }
+          var audio = document.getElementById("audio");
+          if (!audio.paused) {
+            audio.pause();
+          } else {
+            if (audio.stopped) { audio.currentTime = 0; }
+            audio.play();
+          }
+        }
+        function updateSmallMarkerPosition(id, currentTime) {
+          var audio = document.getElementById("audio");
+          var offset = currentTime * <%= waveform.width %> / audio.duration;
+          $(id).css("margin-left", "" + offset + "px");
+        }
+        function updateBigMarkerPosition(id, currentTime, minTime) {
+          var offset = (currentTime - minTime) * <%= waveform.width %> / <%= waveform.big_width_duration %>;
+          $(id).css("margin-left", "" + offset + "px");
+        }
+        function moveToCurrentTime() {
+          var audio = document.getElementById("audio");
+          if (!smallHovering) {
+            updateSmallMarkerPosition("#small-marker-current", audio.currentTime);
+          }
+
+          var bigWidthDuration = <%= waveform.big_width_duration %>;
+          var bigWidth = $("img.waveform-big").width();
+          var bigOffset = audio.currentTime / bigWidthDuration * bigWidth * -1;
+          $(".waveform-big").css("background-position", "" + (bigWidth/2 + bigOffset) + "px");
+
+          var bigMarkerMin = audio.currentTime - bigWidthDuration/2;
+          var bigMarkerMax = audio.currentTime + bigWidthDuration/2;
+          var start = parseFloat($("#start").val());
+          var finish = parseFloat($("#finish").val());
+
+          if (start == NaN || start < bigMarkerMin || start > bigMarkerMax) {
+            $("#big-marker-start").hide();
+          } else {
+            updateBigMarkerPosition("#big-marker-start", start, bigMarkerMin);
+            $("#big-marker-start").show();
+          }
+          if (finish == NaN || finish < bigMarkerMin || finish > bigMarkerMax) {
+            $("#big-marker-finish").hide();
+          } else {
+            updateBigMarkerPosition("#big-marker-finish", finish, bigMarkerMin);
+            $("#big-marker-finish").show();
+          }
+
+          if (playing) { window.setTimeout(moveToCurrentTime, audioUpdateInterval); }
+        }
+        function markStart() {
+          setValue(["#start"], document.getElementById("audio").currentTime.toFixed(2));
+          startFinishChanged();
+        }
+        function markFinish() {
+          setValue(["#finish"], document.getElementById("audio").currentTime.toFixed(2));
+          startFinishChanged();
+        }
+        function startFinishChanged() {
+          updateSmallMarkerPosition("#small-marker-start", parseFloat($("#start").val()));
+          updateSmallMarkerPosition("#small-marker-finish", parseFloat($("#finish").val()));
+          if (!playing) { moveToCurrentTime(); }
+        }
+        $("#audio").bind("play", startedPlaying);
+        $("#audio").bind("pause", stoppedPlaying);
+        // need to wait for audio file to fully load to get the duration
+        $("#audio").bind("canplaythrough", startFinishChanged);
+        $("#play-pause").click(togglePlayPause);
+        $("#waveform-big").bind("mousedown", bigWaveformMouseDown);
+        $("#waveform-small").bind("mousemove", smallWaveformMouseMove);
+        $("#waveform-small-parent").click(smallWaveformClick);
+        $("#waveform-small-parent").bind("mouseenter", smallWaveformStartedHovering);
+        $("#waveform-small-parent").bind("mouseleave", smallWavefromStoppedHovering);
+        $("#mark-start").click(markStart);
+        $("#mark-finish").click(markFinish);
+        $("#start, #finish").bind("change", startFinishChanged);
+
+        $(window).keypress((e) => {
+          if ($(e.target).is("input")) { return; }
+          if (e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            togglePlayPause();
+          } else if (e.key === 's') {
+            e.preventDefault();
+            markStart();
+          } else if (e.key === 'f') {
+            e.preventDefault();
+            markFinish();
+          }
+        });
+        $(window).keydown((e) => {
+          if ($(e.target).is("input") || savedTime != -1) { return; }
+          var newSavedTime = -1;
+          var audio = document.getElementById("audio");
+          if (e.key === 'a') {
+            newSavedTime = parseFloat($("#start").val());
+          } else if (e.key === 'd') {
+            newSavedTime = parseFloat($("#finish").val());
+          } else if (e.key === 'g') {
+            newSavedTime = audio.currentTime;
+          }
+
+          if (newSavedTime == -1) { return; }
+          savedTime = newSavedTime;
+          audio.currentTime = savedTime;
+          audio.play();
+        });
+        $(window).keyup((e) => {
+          if ($(e.target).is("input")) { return; }
+          if ( (e.key === 'a' || e.key === 'd' || e.key === 'g') && savedTime != -1) {
+            audio.pause();
+            audio.currentTime = savedTime;
+            savedTime = -1;
+          }
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="waveform-big-parent" id="waveform-big-parent">
+          <img class="waveform-big rounded" id="waveform-big" />
+          <div class="waveform-big-marker start-marker" id="big-marker-start"></div>
+          <div class="waveform-big-marker finish-marker" id="big-marker-finish"></div>
+          <div class="waveform-big-marker current-marker" id="big-marker-current"></div>
+        </div>
+        <div class="waveform-small-parent" id="waveform-small-parent">
+          <img class="waveform-small rounded" id="waveform-small" />
+          <div class="waveform-small-marker start-marker" id="small-marker-start"></div>
+          <div class="waveform-small-marker finish-marker" id="small-marker-finish"></div>
+          <div class="waveform-small-marker current-marker" id="small-marker-current"></div>
+        </div>
+      </div>
+      <div class="row">
+        <audio preload src="/audio/<%= track_id %>" id="audio"></audio>
+        <div id="controls">
+          <button type="button" class="btn btn-sm btn-warning" id="mark-start">Mark Start</button>
+          <button type="button" class="btn btn-sm btn-dark" id="play-pause"><i class="fa fa-play"></i></button>
+          <button type="button" class="btn btn-sm btn-warning" id="mark-finish">Mark Finish</button>
+        </div>
+      </div>
+      <div class="row justify-content-center">
+        <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause</div>
+      </div>
+      <div class="row justify-content-center">
+        <form action="/track/<%= track_id %>" method="post">
+          <table class="table">
+            <tbody>
+              <tr class="noborder">
+                <td>Name</td>
+                <td><input type="text" id="name" name="name" value="<%= HTMLEntities.new.encode(track.name) %>" /></td>
+              </tr>
+              <tr>
+                <td>Artist</td>
+                <td><input type="text" id="artist" name="artist" value="<%= HTMLEntities.new.encode(track.artist) %>" /></td>
+              </tr>
+              <tr>
+                <td>Album</td>
+                <td><input type="text" id="album" name="album" value="<%= HTMLEntities.new.encode(track.album) %>" /></td>
+              </tr>
+              <tr>
+                <td>Album Artist</td>
+                <td><input type="text" id="album_artist" name="album_artist" value="<%= HTMLEntities.new.encode(track.album_artist) %>" /></td>
+              </tr>
+              <tr>
+                <td>Genre</td>
+                <td class="genre">
+                  <input type="text" id="genre" name="genre" value="<%= HTMLEntities.new.encode(track.genre) %>" />
+                  <div class="dropdown" id="genre-presets">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      Presets
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                      <a class="dropdown-item">Country</a>
+                      <a class="dropdown-item">Electronic</a>
+                      <a class="dropdown-item">Hip Hop/Rap</a>
+                      <a class="dropdown-item">House</a>
+                      <a class="dropdown-item">Pop</a>
+                      <a class="dropdown-item">R&amp;B/Soul</a>
+                      <a class="dropdown-item">Rock</a>
+                      <a class="dropdown-item">Trance</a>
+                      <a class="dropdown-item">Trap</a>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Year</td>
+                <td><input type="text" id="year" name="year" value="<%= track.year %>" /></td>
+              </tr>
+              <tr>
+                <td>Start / Finish</td>
+                <td class="half"><input type="text" id="start" name="start" value="<%= ((track.start.to_f * 100.0).to_i / 100.0).to_s %>" /><span> to </span><input type="text" id="finish" name="finish" value="<%= ((track.finish.to_f * 100).to_i / 100.0).to_s %>" /></td>
+              </tr>
+              <tr>
+                <td>Track</td>
+                <td class="half"><input type="text" id="track" name="track" value="<%= track.track %>" /><span> of </span><input type="text" id="track_count" name="track_count" value="<%= track.track_count %>" /></td>
+              </tr>
+              <tr>
+                <td>Disc</td>
+                <td class="half"><input type="text" id="disc" name="disc" value="<%= track.disc %>" /><span> of </span><input type="text" id="disc_count" name="disc_count" value="<%= track.disc_count %>" /></td>
+              </tr>
+              <% if !track.artworks.empty? %>
+              <tr>
+                <td>Artwork</td>
+                <td><input type="checkbox" id="clear_artworks" name="clear_artworks" value="yes" /> Clear all artwork?</td>
+              </tr>
+              <tr class="noborder">
+                <td>&nbsp;</td>
+                <td>
+                <% track.artworks.each do |artwork| %>
+                  <img class="img-thumbnail" src="/<%= artwork %>" />
+                <% end %>
+                </td>
+              </tr>
+              <% end %>
+              <tr>
+                <td>&nbsp;</td>
+                <td>
+                  <input type="submit" class="btn btn-sm btn-primary" />
+                  <button type="button" class="btn btn-sm btn-success" id="noalbum">No Album</button>
+                  <button type="button" class="btn btn-sm btn-success" id="single">Single From Album</button>
+                  <a class="btn btn-sm btn-secondary" href="/" role="button">Cancel</a>
+                  <br/>
+                  <div class="alert alert-light tiny">* Composer, grouping, comments and lyrics will always be cleared</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
