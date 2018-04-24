@@ -63,8 +63,8 @@ class Server < Sinatra::Base
     track = Track.new(params[:name], params[:artist], params[:album], params[:album_artist], params[:genre], params[:year],
                       params[:track], params[:track_count], params[:disc], params[:disc_count], params[:start], params[:finish])
     Library.set_track_info(params[:id], track)
-
     Library.delete_track_artwork(params[:id]) if params[:clear_artworks] && params[:clear_artworks] == 'yes'
+
     redirect to('/')
   end
 

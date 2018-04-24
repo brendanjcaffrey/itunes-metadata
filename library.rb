@@ -84,10 +84,10 @@ SET_TRACK_INFO = <<-SCRIPT
     set disc count of thisTrack to %s
     set start of thisTrack to "%s"
     set finish of thisTrack to "%s"
+    set comment of thisTrack to ""
     set composer of thisTrack to ""
     set compilation of thisTrack to false
     set grouping of thisTrack to ""
-    set lyrics of thisTrack to ""
   end tell
 
   output
@@ -156,7 +156,8 @@ module Library
     execute_applescript(DELETE_TRACK_ARTWORK, track_id)
   end
 
-  def execute_applescript(template, args)
+
+  def execute_applescript(template, args = [])
     args = [args] unless args.is_a?(Array)
     args = args.map { |arg| arg.to_s.gsub('"', '\"') }
     text = template % args
