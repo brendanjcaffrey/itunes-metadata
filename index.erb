@@ -1,10 +1,24 @@
 <html>
-  <head><title>New Tracks</title></head>
+  <head>
+    <title>New Tracks</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <style type="text/css">
+      .container { margin-top: 8px; }
+      a.btn { margin: 4px; }
+    </style>
+  </head>
   <body>
-    <ul>
-    <% playlist_tracks.each do |track| %>
-      <li><a href="/track/<%= track.id %>"><%= track.desc %></li>
-    <% end %>
-    </ul>
+    <div class="container">
+      <div class="row">
+        <ul>
+        <% playlist_tracks.each do |track| %>
+          <li><a href="/track/<%= track.id %>"><%= track.desc %></li>
+        <% end %>
+        </ul>
+      </div>
+      <div class="row">
+        <a href="/album" class="btn btn-sm btn-primary">Album</a>
+      </div>
+    </div>
   </body>
 </html>

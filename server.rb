@@ -4,6 +4,7 @@ require 'htmlentities'
 require_relative 'library'
 
 PLAYLIST_ID = '4D860944EB057E94'
+ARTWORK_DIR = (File.dirname(__FILE__) + '/artwork/').gsub(/^\//, '').gsub('/', ':')
 WAVEFORM_WIDTH = 1140
 WAVEFORM_SMALL_HEIGHT = 35
 WAVEFORM_BIG_HEIGHT = 90
@@ -55,8 +56,7 @@ class Server < Sinatra::Base
   end
 
   get '/track/:id' do
-    dir = (File.dirname(__FILE__) + '/artwork/').gsub(/^\//, '').gsub('/', ':')
-    erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], dir), waveform: WAVEFORM }
+    erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], ARTWORK_DIR), waveform: WAVEFORM }
   end
 
   post '/track/:id' do
@@ -64,6 +64,46 @@ class Server < Sinatra::Base
                       params[:track], params[:track_count], params[:disc], params[:disc_count], params[:start], params[:finish])
     Library.set_track_info(params[:id], track)
     Library.delete_track_artwork(params[:id]) if params[:clear_artworks] && params[:clear_artworks] == 'yes'
+
+    redirect to('/')
+  end
+
+  get '/album' do
+    track_ids = Library.get_playlist_tracks(PLAYLIST_ID).map { |playlist_track| playlist_track.id }
+    tracks = track_ids.zip(track_ids.map { |track_id| Library.get_track(track_id, nil) })
+    tracks = tracks.sort do |track1, track2|
+      if track1[1].disc == track2[1].disc
+        track1[1].track.to_i <=> track2[1].track.to_i
+      else
+        track1[1].disc.to_i <=> track2[1].disc.to_i
+      end
+    end
+    erb :album, locals: { tracks: tracks }
+  end
+
+  post '/album' do
+    order = params[:order].split(',')
+    order = order[0..-2] if order[-1] == 'DISC'
+    discs = [[]]
+
+    while !order.empty?
+      id = order.shift
+      if id == 'DISC'
+        discs << []
+      else
+        discs[-1] << id
+      end
+    end
+
+    disc_count = discs.count
+    discs.each_with_index do |tracks, disc|
+      track_count = tracks.count
+      tracks.each_with_index do |track_id, track|
+        track = Track.new(params[:names][track_id], params[:artist], params[:album], params[:artist],
+                          params[:genre], params[:year], track+1, track_count, disc+1, disc_count)
+        Library.set_track_info(track_id, track, false)
+      end
+    end
 
     redirect to('/')
   end

@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Album</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <style type="text/css">
+      input[type="text"] { width: 400px; }
+      input[type="text"].small { width: 150px; }
+      .genre input[type="text"] { width: 276px; }
+      .genre .dropdown { margin-left: 4px; display: inline-block; }
+      .genre .dropdown button { width: 116px !important; padding: 2px !important; margin-top: -4px !important; }
+      #tracks { list-style: none; padding-left: 0; }
+      li i { cursor: grab; }
+      li span i { cursor: pointer; color: red; }
+      div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="https://lukasoppermann.github.io/html5sortable/html5sortable.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.polyfill.io/v2/polyfill.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      $(document).ready(() => {
+        sortable("#tracks", { forcePlaceholderSize: true, handle: 'i' });
+        $("#tracks li.disc-separator span i").click((e) => {
+          $(e.target).closest("li").remove();
+        });
+
+        $("#tracks li span").dblclick((e) => {
+          var span = $(e.target);
+          span.hide();
+
+          var input = $("<input type=\"text\" class=\"small\" />");
+          input.appendTo(span.parent());
+          input.val(span.text());
+          input.focus();
+
+          input.keypress((e) => {
+            if (e.key == 'Enter') {
+              e.preventDefault();
+              input.blur();
+            }
+          });
+
+          input.blur(() => {
+            span.text(input.val());
+            $("#" + span.parent().attr("data-id") + "-name").val(input.val());
+            span.show();
+            input.remove();
+          });
+        });
+
+        $("form").submit((e) => {
+          var ids = [];
+          $("#tracks li").each(function(idx) { ids.push($(this).attr("data-id")); });
+          $("#order").val(ids.join(","));
+        });
+
+        $("#disc-separator").click(() => {
+          $("#tracks").append("<li data-id=\"DISC\"><i class=\"fa fa-bars\"></i> <span>--- DISC --- <i class=\"fa fa-times\"></i></span></li>");
+          $("#tracks li:last-child span i").click((e) => {
+            $(e.target).closest("li").remove();
+          });
+          sortable("#tracks");
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row justify-content-center">
+        <form action="/album" method="post">
+          <input type="hidden" id="order" name="order" />
+
+          <table class="table">
+            <tbody>
+              <tr class="noborder">
+              <tr>
+                <td>Artist</td>
+                <td><input type="text" id="artist" name="artist" value="<%= HTMLEntities.new.encode(tracks.first[1].artist) %>" /></td>
+              </tr>
+              <tr>
+                <td>Album</td>
+                <td><input type="text" id="album" name="album" value="<%= HTMLEntities.new.encode(tracks.first[1].album) %>" /></td>
+              </tr>
+              <tr>
+                <td>Genre</td>
+                <td class="genre">
+                  <input type="text" id="genre" name="genre" value="<%= HTMLEntities.new.encode(tracks.first[1].genre) %>" />
+                  <div class="dropdown" id="genre-presets">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      Presets
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                      <a class="dropdown-item">Country</a>
+                      <a class="dropdown-item">Electronic</a>
+                      <a class="dropdown-item">Hip Hop/Rap</a>
+                      <a class="dropdown-item">House</a>
+                      <a class="dropdown-item">Pop</a>
+                      <a class="dropdown-item">R&amp;B/Soul</a>
+                      <a class="dropdown-item">Rock</a>
+                      <a class="dropdown-item">Trance</a>
+                      <a class="dropdown-item">Trap</a>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Year</td>
+                <td><input type="text" id="year" name="year" value="<%= tracks.first[1].year %>" /></td>
+              </tr>
+              <tr>
+                <td>Tracks</td>
+                <td>
+                  <ul id="tracks">
+                    <% last_disc = tracks.first[1].disc %>
+                    <% tracks.each do |track| %>
+                      <% if last_disc != track[1].disc; last_disc = track[1].disc %>
+                        <li data-id="DISC" class="disc-separator"><i class="fa fa-bars"></i> <span>--- DISC --- <i class="fa fa-times"></i></span></li>
+                      <% end %>
+                      <input type="hidden" id="<%= track[0] %>-name" name="names[<%= track[0] %>]" value="<%= HTMLEntities.new.encode(track[1].name) %>" />
+                      <li data-id="<%= track[0] %>"><i class="fa fa-bars"></i> <span><%= HTMLEntities.new.encode(track[1].name) %></span></li>
+                    <% end %>
+                  </ul>
+                </td>
+              </tr>
+              <tr>
+                <td>&nbsp;</td>
+                <td>
+                  <input type="submit" class="btn btn-sm btn-primary" />
+                  <button type="button" class="btn btn-sm btn-success" id="disc-separator">Add Disc</button>
+                  <a class="btn btn-sm btn-secondary" href="/" role="button">Cancel</a>
+                  <br/>
+                  <div class="alert alert-light tiny">* Comments, composer, compilation and grouping will be cleared</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

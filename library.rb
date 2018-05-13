@@ -41,6 +41,17 @@ TRACK_INFO = <<-SCRIPT
     set output to output & start of thisTrack & "\n"
     set output to output & finish of thisTrack & "\n"
     set output to output & duration of thisTrack & "\n"
+  end tell
+
+  output
+SCRIPT
+
+TRACK_ARTWORK = <<-SCRIPT
+  set output to ""
+
+  tell application "iTunes"
+    set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
+    set thisTrack to item 1 of theseTracks
 
     set i to -1
     repeat with thisArtwork in artworks of thisTrack
@@ -71,6 +82,7 @@ SET_TRACK_INFO = <<-SCRIPT
   tell application "iTunes"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
+    set updateTimes to %s
 
     set name of thisTrack to "%s"
     set artist of thisTrack to "%s"
@@ -82,8 +94,10 @@ SET_TRACK_INFO = <<-SCRIPT
     set track count of thisTrack to %s
     set disc number of thisTrack to %s
     set disc count of thisTrack to %s
-    set start of thisTrack to "%s"
-    set finish of thisTrack to "%s"
+    if updateTimes then
+      set start of thisTrack to "%s"
+      set finish of thisTrack to "%s"
+    end if
     set comment of thisTrack to ""
     set composer of thisTrack to ""
     set compilation of thisTrack to false
@@ -135,7 +149,10 @@ module Library
   end
 
   def get_track(track_id, artwork_out_dir)
-    lines = execute_applescript(TRACK_INFO, [track_id, artwork_out_dir]).strip.split("\n", TRACK_FIELDS_COUNT)
+    lines = execute_applescript(TRACK_INFO, track_id).strip
+    lines += "\n" + execute_applescript(TRACK_ARTWORK, [track_id, artwork_out_dir]).strip unless artwork_out_dir.nil?
+    lines = lines.split("\n", TRACK_FIELDS_COUNT)
+
     track = Track.new(*lines)
     track.artworks = track.artworks.nil? ? [] : track.artworks.split("\n")
     track
@@ -147,9 +164,9 @@ module Library
     [location, duration]
   end
 
-  def set_track_info(track_id, track)
-    execute_applescript(SET_TRACK_INFO, [track_id, track.name, track.artist, track.album, track.album_artist, track.genre,
-      track.year, track.track, track.track_count, track.disc, track.disc_count, track.start, track.finish])
+  def set_track_info(track_id, track, update_times = true)
+    puts execute_applescript(SET_TRACK_INFO, [track_id, update_times.to_s, track.name, track.artist, track.album, track.album_artist,
+      track.genre, track.year, track.track, track.track_count, track.disc, track.disc_count, track.start, track.finish])
   end
 
   def delete_track_artwork(track_id)
