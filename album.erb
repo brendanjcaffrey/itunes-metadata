@@ -10,6 +10,7 @@
       .genre input[type="text"] { width: 276px; }
       .genre .dropdown { margin-left: 4px; display: inline-block; }
       .genre .dropdown button { width: 116px !important; padding: 2px !important; margin-top: -4px !important; }
+      #genre-presets a { cursor: pointer; }
       #tracks { list-style: none; padding-left: 0; }
       li i { cursor: grab; }
       li span i { cursor: pointer; color: red; }
@@ -64,6 +65,11 @@
             $(e.target).closest("li").remove();
           });
           sortable("#tracks");
+        });
+
+        $("#genre-presets a").click(function() {
+          $("#genre").val(this.text);
+          flash("#genre");
         });
       });
     </script>
