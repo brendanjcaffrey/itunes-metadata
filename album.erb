@@ -15,6 +15,33 @@
       li i { cursor: grab; }
       li span i { cursor: pointer; color: red; }
       div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
+
+      .flash{
+        -moz-animation: flash 0.5s ease-out;
+        -moz-animation-iteration-count: 1;
+        -webkit-animation: flash 0.5s ease-out;
+        -webkit-animation-iteration-count: 1;
+        -ms-animation: flash 0.5s ease-out;
+        -ms-animation-iteration-count: 1;
+      }
+
+      @-webkit-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
+
+      @-moz-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
+
+      @-ms-keyframes flash {
+        0% { background-color: none; }
+        50% { background-color: #FFFF9C; }
+        100% { background-color: none; }
+      }
     </style>
 
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
@@ -23,6 +50,11 @@
     <script src="https://lukasoppermann.github.io/html5sortable/html5sortable.js" crossorigin="anonymous"></script>
     <script src="https://cdn.polyfill.io/v2/polyfill.min.js" crossorigin="anonymous"></script>
     <script type="text/javascript">
+      function flash(id) {
+        $(id).addClass("flash");
+        setTimeout(() => $(id).removeClass("flash"), 500);
+      }
+
       $(document).ready(() => {
         sortable("#tracks", { forcePlaceholderSize: true, handle: 'i' });
         $("#tracks li.disc-separator span i").click((e) => {
@@ -50,6 +82,7 @@
             $("#" + span.parent().attr("data-id") + "-name").val(input.val());
             span.show();
             input.remove();
+            flash(span);
           });
         });
 
