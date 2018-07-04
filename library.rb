@@ -144,7 +144,7 @@ module Library
   module_function
 
   def get_playlist_tracks(playlist_id)
-    lines = execute_applescript(PLAYLIST_TRACKS, playlist_id).split("\n")
+    lines = execute_applescript(PLAYLIST_TRACKS, playlist_id).split("\n").sort
     lines.map { |line| PlaylistTrack.new(*line.split('::', 2)) }
   end
 
