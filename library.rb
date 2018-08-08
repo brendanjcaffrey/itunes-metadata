@@ -114,8 +114,8 @@ DELETE_TRACK_ARTWORK = <<-SCRIPT
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
 
-    repeat with thisArtwork in artworks of thisTrack
-      delete thisArtwork
+    repeat while count of artworks of thisTrack > 0
+      delete artwork 1 of thisTrack
     end repeat
   end tell
 
