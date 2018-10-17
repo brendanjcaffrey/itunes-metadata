@@ -13,6 +13,9 @@
       .genre .dropdown { margin-left: 4px; display: inline-block; }
       .genre .dropdown button { width: 116px !important; padding: 2px !important; margin-top: -4px !important; }
       #genre-presets a { cursor: pointer; }
+      input { border: 1px solid #ced4da; }
+      .is-invalid { border-color: #dc3545; }
+      .is-invalid:focus { border-color: #dc3545; box-shadow: 0 0 0 .2rem rgba(220,53,69,.25); }
       img { width: 125px; height: 125px; }
       tr.noborder td { border-color: transparent; }
       div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
@@ -60,6 +63,9 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <script type="text/javascript">
       $(document).ready(() => {
+        var validGenres = [];
+        $('.dropdown-item').each(function(index, obj) { validGenres.push($(this).text()); });
+
         // update element values
         function flash(id) {
           $(id).addClass("flash");
@@ -69,6 +75,26 @@
           if (typeof(ids) == "string") { setValue([ids], value); }
           ids.forEach((id) => { $(id).val(value); flash(id); });
         }
+        function updateValidationStatus(el, isValid) {
+          if (isValid) { $(el).removeClass("is-invalid"); }
+          else { $(el).addClass("is-invalid"); }
+          return isValid;
+        }
+        function validate() {
+          var allValid = true;
+          $.each(["#name", "#artist"], (idx, el) => {
+            allValid = updateValidationStatus(el, $(el).val().length > 0) && allValid;
+          });
+          var yearVal = parseInt($("#year").val());
+          var yearValid = !isNaN(yearVal) && yearVal > 1000;
+          allValid = updateValidationStatus("#year", yearValid) && allValid;
+          var genreValid = validGenres.indexOf($("#genre").val()) >= 0;
+          allValid = updateValidationStatus("#genre", genreValid) && allValid;
+
+          $("#submit").attr("disabled", !allValid);
+        }
+        validate();
+        $("#name, #artist, #year, #genre").bind("input", validate);
         $("#noalbum").click(() => {
           setValue(["#track", "#track_count", "#disc", "#disc_count"], "0");
           setValue(["#album_artist", "#album"], "");
@@ -80,6 +106,7 @@
         });
         $("#genre-presets a").click(function() {
           $("#genre").val(this.text);
+          validate();
           flash("#genre");
         });
 
@@ -364,7 +391,7 @@
               <tr>
                 <td>&nbsp;</td>
                 <td>
-                  <input type="submit" class="btn btn-sm btn-primary" />
+                  <input type="submit" id="submit" class="btn btn-sm btn-primary" />
                   <button type="button" class="btn btn-sm btn-success" id="noalbum">No Album</button>
                   <button type="button" class="btn btn-sm btn-success" id="single">Single From Album</button>
                   <a class="btn btn-sm btn-secondary" href="/" role="button">Cancel</a>
