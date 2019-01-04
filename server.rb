@@ -1,6 +1,7 @@
 require 'sinatra/base'
 require 'sinatra/json'
 require 'htmlentities'
+require 'fileutils'
 require_relative 'library'
 
 PLAYLIST_ID = '4D860944EB057E94'
@@ -56,6 +57,20 @@ class Server < Sinatra::Base
   end
 
   get '/track/:id' do
+    id = params[:id]
+    Thread.new do
+      converted_file, in_progress = get_converted_info(id)
+      in_file, _ = Library.get_track_location_and_duration(id)
+      if is_m4a(in_file) && !File.exists?(converted_file)
+        FileUtils.touch(in_progress)
+        puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
+        puts "ffmpeg -i #{in_file.shellescape} -acodec libmp3lame -ab 128k #{converted_file.shellescape} &>/dev/null"
+        `ffmpeg -i #{in_file.shellescape} -acodec libmp3lame -ab 128k #{converted_file.shellescape} &>/dev/null`
+        puts "======== Conversion Done #{File.basename(in_file)} -> #{converted_file} ========"
+        FileUtils.rm(in_progress)
+      end
+    end
+
     erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], ARTWORK_DIR), waveform: WAVEFORM }
   end
 
@@ -110,6 +125,16 @@ class Server < Sinatra::Base
 
   private
 
+  def is_m4a(file)
+    file[-4..-1] == '.m4a'
+  end
+
+  def get_converted_info(id)
+    converted_file = "audio/#{id}.mp3"
+    in_progress = "audio/#{id}.mp3.wip"
+    [converted_file, in_progress]
+  end
+
   def generate_big_waveform(track_id, scale)
     generate_waveform(track_id, 'big', scale, WAVEFORM_WIDTH, WAVEFORM_BIG_HEIGHT, true)
   end
@@ -121,14 +146,26 @@ class Server < Sinatra::Base
   def generate_waveform(track_id, size, scale, base_width, height, scale_width)
     file, duration = Library.get_track_location_and_duration(params[:id])
     destination = "waveforms/#{params[:id]}.#{size}.#{scale}.png" # waveforms/ABCD.big.1x.png
+    converted_file, in_progress = get_converted_info(params[:id])
 
     if scale_width
       base_width = (base_width * duration.to_f / WAVEFORM_BIG_WIDTH_DURATION).ceil
     end
 
+    if is_m4a(file)
+      file = converted_file
+
+      log = true
+      while File.exists?(in_progress) || !File.exists?(converted_file)
+        puts "Waiting on conversion for #{destination}..." if log
+        log = false
+        sleep 0.5
+      end
+    end
+
     if !File.exists?(destination)
-      puts "audiowaveform -i \"#{file}\" -o \"#{destination}\" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels"
-      puts `audiowaveform -i "#{file}" -o "#{destination}" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels`
+      puts "audiowaveform -i \"#{file}\" -o \"#{destination}\" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null"
+      `audiowaveform -i "#{file}" -o "#{destination}" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null`
     end
     send_file destination
   end
