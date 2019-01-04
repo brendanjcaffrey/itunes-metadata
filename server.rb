@@ -164,8 +164,8 @@ class Server < Sinatra::Base
     end
 
     if !File.exists?(destination)
-      puts "audiowaveform -i \"#{file}\" -o \"#{destination}\" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null"
-      `audiowaveform -i "#{file}" -o "#{destination}" -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null`
+      puts "audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null"
+      `audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null`
     end
     send_file destination
   end
