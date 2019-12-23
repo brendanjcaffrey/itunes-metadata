@@ -3,7 +3,7 @@ require 'tempfile'
 PLAYLIST_TRACKS = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     repeat with thisPlaylist in user playlists
       try
         if persistent ID of thisPlaylist is not equal to "%s" then
@@ -24,7 +24,7 @@ SCRIPT
 TRACK_INFO = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
 
@@ -49,7 +49,7 @@ SCRIPT
 TRACK_ARTWORK = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
 
@@ -79,7 +79,7 @@ SCRIPT
 SET_TRACK_INFO = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
     set updateTimes to %s
@@ -110,7 +110,7 @@ SCRIPT
 DELETE_TRACK_ARTWORK = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
 
@@ -125,7 +125,7 @@ SCRIPT
 TRACK_LOCATION_AND_DURATION = <<-SCRIPT
   set output to ""
 
-  tell application "iTunes"
+  tell application "Music"
     set theseTracks to tracks in playlist 1 whose persistent ID is "%s"
     set thisTrack to item 1 of theseTracks
 
