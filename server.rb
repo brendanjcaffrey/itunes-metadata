@@ -31,6 +31,10 @@ class Server < Sinatra::Base
   set :views, '.'
   set :public_folder, File.dirname(__FILE__) + '/artwork'
 
+  before do
+    headers 'Access-Control-Allow-Origin' => '*'
+  end
+
   get '/' do
     erb :index, locals: { playlist_tracks: Library.get_playlist_tracks(PLAYLIST_ID) }
   end
