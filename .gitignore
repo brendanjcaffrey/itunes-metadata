@@ -1,5 +1,5 @@
 artwork/*.png
 artwork/*.jpg
-waveforms/*.png
+waveforms/*.dat
 audio/*.mp3
 .DS_Store

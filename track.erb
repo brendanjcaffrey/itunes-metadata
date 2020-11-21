@@ -20,15 +20,8 @@
       tr.noborder td { border-color: transparent; }
       div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
       td div.alert { padding: 8px 0 0 0; }
-      div.waveform-big-container { width: <%= waveform.width %>px; height: <%= waveform.big_height %>px; }
-      img.waveform-big { background: -webkit-image-set( url(/waveform/<%= track_id %>.big.1x.png) 1x, url(/waveform/<%= track_id %>.big.2x.png) 2x); width: <%= waveform.width %>px; height: <%= waveform.big_height %>px; background-position: <%= waveform.width/2 %>px; background-repeat: no-repeat; }
-      div.waveform-big-marker.current-marker { margin-left: <%= waveform.width / 2%>px; }
-      div.waveform-big-marker { width: 2px; height: <%= waveform.big_height %>px; position: absolute; top: 0; }
-      div.waveform-small-container { width: <%= waveform.width %>px; height: <%= waveform.small_height %>px; }
-      img.waveform-small { background: -webkit-image-set( url(/waveform/<%= track_id %>.small.1x.png) 1x, url(/waveform/<%= track_id %>.small.2x.png) 2x); width: <%= waveform.width %>px; height: <%= waveform.small_height %>px; }
-      div.waveform-small-marker { width: 2px; height: <%= waveform.small_height %>px; position: absolute; top: <%= waveform.big_height %>px; }
-      div.current-marker { background-color: black; }
-      div.start-marker, div.finish-marker { background-color: #ffc107; }
+      div#zoomview-container { width: 1140px; height: 100px; }
+      div#overview-container { width: 1140px; height: 50px; }
       div#controls { margin: 4px auto; }
 
       .flash{
@@ -61,6 +54,7 @@
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peaks.js/0.22.0/peaks.min.js" integrity="sha512-gZN4ZaNuadKld2f/bNaVOMmkeS093+bPySI6fva+5hSHm/SQLbqbupWHYLaGFVYSOjBHhDCmkGxBccFtZqVMCg==" crossorigin="anonymous"></script>
     <script type="text/javascript">
       $(document).ready(() => {
         var validGenres = [];
@@ -111,57 +105,39 @@
         });
 
         // waveforms/audio
-        var bigMouseDown = false;
-        var mouseDownX = -1;
-        var smallHovering = false;
-        var lastHoverX = -1;
+        const options = {
+          containers: {
+            zoomview: document.getElementById('zoomview-container'),
+            overview: document.getElementById('overview-container')
+          },
+          mediaElement: document.querySelector('audio'),
+          dataUri: {
+            arraybuffer: "/waveform/<%= track_id %>.dat"
+          },
+          zoomWaveformColor: 'rgb(63, 77, 155)',
+          overviewWaveformColor: 'rgba(63, 77, 155, 0.75)',
+          overviewHighlightColor: 'transparent',
+          pointMarkerColor: '#000000',
+          axisGridlineColor: 'transparent',
+          axisLabelColor: 'rgba(0,0,0,0.5)',
+          logger: console.error.bind(console),
+          points: [
+            { time: parseFloat($("#start").val()), labelText: "", id: "start" },
+            { time: parseFloat($("#finish").val()), labelText: "", id: "finish" }
+          ]
+        };
+
+        const instance = peaks.init(options, function(err, peaks) {
+          if (err) {
+            console.error('Failed to initialize Peaks instance: ' + err.message);
+            return;
+          }
+        });
         var savedTime = -1;
         var playing = false;
-        var audioUpdateInterval = 25; // milliseconds
-        function bigWaveformMouseDown(mouseEvent) {
-          bigMouseDown = true;
-          mouseDownX = mouseEvent.originalEvent.screenX;
-          $(document).bind("mousemove", bigWaveformMouseMove);
-          $(document).bind("mouseup", bigWaveformMouseUp);
-        }
-        function bigWaveformMouseUp() {
-          $(document).unbind("mousemove", bigWaveformMouseMove);
-          $(document).unbind("mouseup", bigWaveformMouseUp);
-          bigMouseDown = false;
-          mouseDownX = -1;
-        }
-        function bigWaveformMouseMove(mouseEvent) {
-          if (!bigMouseDown) { return; }
-          var diff = mouseDownX - mouseEvent.originalEvent.screenX;
-          mouseDownX = mouseEvent.originalEvent.screenX;
-          var diffInSeconds = diff * <%= waveform.big_width_duration %> / <%= waveform.width %>;
-          document.getElementById("audio").currentTime += diffInSeconds;
-          moveToCurrentTime();
-        }
-        function smallWaveformStartedHovering() {
-          smallHovering = true;
-        }
-        function smallWavefromStoppedHovering() {
-          smallHovering = false;
-          lastHoverX = -1;
-          moveToCurrentTime();
-        }
-        function smallWaveformMouseMove(mouseEvent) {
-          if (!smallHovering || bigMouseDown) { return; }
-          lastHoverX = mouseEvent.originalEvent.offsetX;
-          $("#small-marker-current").css("margin-left", "" + mouseEvent.originalEvent.offsetX + "px");
-        }
-        function smallWaveformClick(mouseEvent) {
-          if (!smallHovering || lastHoverX == -1) { return; }
-          var audio = document.getElementById("audio");
-          audio.currentTime = lastHoverX * audio.duration / $("img.waveform-small").width();
-          if (!playing) { moveToCurrentTime(); }
-        }
-        // the timeupdate audio event doesn't fire enough to make the big waveform move smoothly, so we have to do this instead
         function startedPlaying() {
           if (savedTime == -1) { $("#play-pause i").removeClass("fa-play").addClass("fa-pause"); }
           playing = true;
-          moveToCurrentTime();
         }
         function stoppedPlaying() {
           $("#play-pause i").removeClass("fa-pause").addClass("fa-play");
@@ -181,72 +157,26 @@
             audio.play();
           }
         }
-        function updateSmallMarkerPosition(id, currentTime) {
-          var audio = document.getElementById("audio");
-          var offset = currentTime * <%= waveform.width %> / audio.duration;
-          $(id).css("margin-left", "" + offset + "px");
-        }
-        function updateBigMarkerPosition(id, currentTime, minTime) {
-          var offset = (currentTime - minTime) * <%= waveform.width %> / <%= waveform.big_width_duration %>;
-          $(id).css("margin-left", "" + offset + "px");
-        }
-        function moveToCurrentTime() {
-          var audio = document.getElementById("audio");
-          if (!smallHovering) {
-            updateSmallMarkerPosition("#small-marker-current", audio.currentTime);
-          }
-
-          var bigWidthDuration = <%= waveform.big_width_duration %>;
-          var bigWidth = $("img.waveform-big").width();
-          var bigOffset = audio.currentTime / bigWidthDuration * bigWidth * -1;
-          $(".waveform-big").css("background-position", "" + (bigWidth/2 + bigOffset) + "px");
-
-          var bigMarkerMin = audio.currentTime - bigWidthDuration/2;
-          var bigMarkerMax = audio.currentTime + bigWidthDuration/2;
-          var start = parseFloat($("#start").val());
-          var finish = parseFloat($("#finish").val());
-
-          if (start == NaN || start < bigMarkerMin || start > bigMarkerMax) {
-            $("#big-marker-start").hide();
-          } else {
-            updateBigMarkerPosition("#big-marker-start", start, bigMarkerMin);
-            $("#big-marker-start").show();
-          }
-          if (finish == NaN || finish < bigMarkerMin || finish > bigMarkerMax) {
-            $("#big-marker-finish").hide();
-          } else {
-            updateBigMarkerPosition("#big-marker-finish", finish, bigMarkerMin);
-            $("#big-marker-finish").show();
-          }
-
-          if (playing) { window.setTimeout(moveToCurrentTime, audioUpdateInterval); }
-        }
         function markStart() {
           setValue(["#start"], document.getElementById("audio").currentTime.toFixed(2));
-          startFinishChanged();
+          updateStartFinishPoints();
         }
         function markFinish() {
           setValue(["#finish"], document.getElementById("audio").currentTime.toFixed(2));
-          startFinishChanged();
+          updateStartFinishPoints();
         }
-        function startFinishChanged() {
-          updateSmallMarkerPosition("#small-marker-start", parseFloat($("#start").val()));
-          updateSmallMarkerPosition("#small-marker-finish", parseFloat($("#finish").val()));
-          if (!playing) { moveToCurrentTime(); }
+        function updateStartFinishPoints() {
+          instance.points.getPoint("start").update({ time: parseFloat($("#start").val()) });
+          instance.points.getPoint("finish").update({ time: parseFloat($("#finish").val()) });
         }
         $("#audio").bind("play", startedPlaying);
         $("#audio").bind("pause", stoppedPlaying);
         // need to wait for audio file to fully load to get the duration
-        $("#audio").bind("canplaythrough", startFinishChanged);
+        // $("#audio").bind("canplaythrough", updateStartFinishPoints); TODO?
         $("#play-pause").click(togglePlayPause);
-        $("#waveform-big").bind("mousedown", bigWaveformMouseDown);
-        $("#waveform-small").bind("mousemove", smallWaveformMouseMove);
-        $("#waveform-small-parent").click(smallWaveformClick);
-        $("#waveform-small-parent").bind("mouseenter", smallWaveformStartedHovering);
-        $("#waveform-small-parent").bind("mouseleave", smallWavefromStoppedHovering);
         $("#mark-start").click(markStart);
         $("#mark-finish").click(markFinish);
-        $("#start, #finish").bind("change", startFinishChanged);
+        $("#start, #finish").bind("change", updateStartFinishPoints);
 
         $(window).keypress((e) => {
           if ($(e.target).is("input")) { return; }
@@ -292,17 +222,9 @@
   <body>
     <div class="container">
       <div class="row">
-        <div class="waveform-big-parent" id="waveform-big-parent">
-          <img class="waveform-big rounded" id="waveform-big" />
-          <div class="waveform-big-marker start-marker" id="big-marker-start"></div>
-          <div class="waveform-big-marker finish-marker" id="big-marker-finish"></div>
-          <div class="waveform-big-marker current-marker" id="big-marker-current"></div>
-        </div>
-        <div class="waveform-small-parent" id="waveform-small-parent">
-          <img class="waveform-small rounded" id="waveform-small" />
-          <div class="waveform-small-marker start-marker" id="small-marker-start"></div>
-          <div class="waveform-small-marker finish-marker" id="small-marker-finish"></div>
-          <div class="waveform-small-marker current-marker" id="small-marker-current"></div>
+        <div id="peaks-container">
+          <div id="zoomview-container"></div>
+          <div id="overview-container"></div>
         </div>
       </div>
       <div class="row">

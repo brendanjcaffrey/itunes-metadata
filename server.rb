@@ -6,11 +6,6 @@ require_relative 'library'
 
 PLAYLIST_ID = '4D860944EB057E94'
 ARTWORK_DIR = (File.dirname(__FILE__) + '/artwork/').gsub(/^\//, '').gsub('/', ':')
-WAVEFORM_WIDTH = 1140
-WAVEFORM_SMALL_HEIGHT = 35
-WAVEFORM_BIG_HEIGHT = 90
-WAVEFORM_BIG_WIDTH_DURATION = 30 # seconds
-WAVEFORM = Struct.new(:width, :small_height, :big_height, :big_width_duration).new(WAVEFORM_WIDTH, WAVEFORM_SMALL_HEIGHT, WAVEFORM_BIG_HEIGHT, WAVEFORM_BIG_WIDTH_DURATION)
 MIME_TYPES = {
   'mp3' => 'audio/mpeg',
   'mp4' => 'audio/mp4',
@@ -44,20 +39,8 @@ class Server < Sinatra::Base
     send_file file, type: file.split('.').last
   end
 
-  get '/waveform/:id.big.2x.png' do
-    send_file generate_big_waveform(params[:id], 2)
-  end
-
-  get '/waveform/:id.big.1x.png' do
-    send_file generate_big_waveform(params[:id], 1)
-  end
-
-  get '/waveform/:id.small.2x.png' do
-    send_file generate_small_waveform(params[:id], 2)
-  end
-
-  get '/waveform/:id.small.1x.png' do
-    send_file generate_small_waveform(params[:id], 1)
+  get '/waveform/:id.dat' do
+    send_file generate_waveform_dat(params[:id])
   end
 
   get '/track/:id' do
@@ -75,7 +58,7 @@ class Server < Sinatra::Base
       end
     end
 
-    erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], ARTWORK_DIR), waveform: WAVEFORM }
+    erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], ARTWORK_DIR)}
   end
 
   post '/track/:id' do
@@ -139,22 +122,10 @@ class Server < Sinatra::Base
     [converted_file, in_progress]
   end
 
-  def generate_big_waveform(track_id, scale)
-    generate_waveform(track_id, 'big', scale, WAVEFORM_WIDTH, WAVEFORM_BIG_HEIGHT, true)
-  end
-
-  def generate_small_waveform(track_id, scale)
-    generate_waveform(track_id, 'small', scale, WAVEFORM_WIDTH, WAVEFORM_SMALL_HEIGHT, false)
-  end
-
-  def generate_waveform(track_id, size, scale, base_width, height, scale_width)
+  def generate_waveform_dat(track_id)
     file, duration = Library.get_track_location_and_duration(params[:id])
-    destination = "waveforms/#{params[:id]}.#{size}.#{scale}.png" # waveforms/ABCD.big.1x.png
+    destination = "waveforms/#{params[:id]}.dat"
     converted_file, in_progress = get_converted_info(params[:id])
-
-    if scale_width
-      base_width = (base_width * duration.to_f / WAVEFORM_BIG_WIDTH_DURATION).ceil
-    end
 
     if is_m4a(file)
       file = converted_file
@@ -168,8 +139,8 @@ class Server < Sinatra::Base
     end
 
     if !File.exists?(destination)
-      puts "audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null"
-      `audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -s 0 -e #{duration} -w #{base_width*scale} -h #{height*scale} --background-color FFFFFF --no-axis-labels &>/dev/null`
+      puts "audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -b 8 &>/dev/null"
+      `audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -b 8 &>/dev/null`
     end
     send_file destination
   end
