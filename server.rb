@@ -36,6 +36,19 @@ class Server < Sinatra::Base
 
   get '/audio/:id' do
     file, _ = Library.get_track_location_and_duration(params[:id])
+    converted_file, in_progress = get_converted_info(params[:id])
+
+    if !is_wav(file)
+      file = converted_file
+
+      log = true
+      while File.exists?(in_progress) || !File.exists?(converted_file)
+        puts "Waiting on conversion for #{converted_file}..." if log
+        log = false
+        sleep 0.5
+      end
+    end
+
     send_file file, type: file.split('.').last
   end
 
@@ -48,11 +61,11 @@ class Server < Sinatra::Base
     Thread.new do
       converted_file, in_progress = get_converted_info(id)
       in_file, _ = Library.get_track_location_and_duration(id)
-      if is_m4a(in_file) && !File.exists?(converted_file)
+      if !is_wav(in_file) && !File.exists?(converted_file)
         FileUtils.touch(in_progress)
         puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
-        puts "ffmpeg -i #{in_file.shellescape} -acodec libmp3lame -ab 128k #{converted_file.shellescape} &>/dev/null"
-        `ffmpeg -i #{in_file.shellescape} -acodec libmp3lame -ab 128k #{converted_file.shellescape} &>/dev/null`
+        puts "ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
+        `ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null`
         puts "======== Conversion Done #{File.basename(in_file)} -> #{converted_file} ========"
         FileUtils.rm(in_progress)
       end
@@ -112,13 +125,13 @@ class Server < Sinatra::Base
 
   private
 
-  def is_m4a(file)
-    file[-4..-1] == '.m4a'
+  def is_wav(file)
+    file[-4..-1] == '.wav'
   end
 
   def get_converted_info(id)
-    converted_file = "audio/#{id}.mp3"
-    in_progress = "audio/#{id}.mp3.wip"
+    converted_file = "audio/#{id}.wav"
+    in_progress = "audio/#{id}.wav.wip"
     [converted_file, in_progress]
   end
 
@@ -127,7 +140,7 @@ class Server < Sinatra::Base
     destination = "waveforms/#{params[:id]}.dat"
     converted_file, in_progress = get_converted_info(params[:id])
 
-    if is_m4a(file)
+    if !is_wav(file)
       file = converted_file
 
       log = true
