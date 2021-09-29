@@ -5,6 +5,7 @@ require 'fileutils'
 require_relative 'library'
 
 PLAYLIST_ID = '4D860944EB057E94'
+TO_PLAYLIST_ID = '47C05645C4AAAE4F'
 ARTWORK_DIR = (File.dirname(__FILE__) + '/artwork/').gsub(/^\//, '').gsub('/', ':')
 MIME_TYPES = {
   'mp3' => 'audio/mpeg',
@@ -79,6 +80,7 @@ class Server < Sinatra::Base
                       params[:track], params[:track_count], params[:disc], params[:disc_count], params[:start], params[:finish])
     Library.set_track_info(params[:id], track)
     Library.delete_track_artwork(params[:id]) if params[:clear_artworks] && params[:clear_artworks] == 'yes'
+    Library.move_track(PLAYLIST_ID, TO_PLAYLIST_ID, params[:id]) if params[:move] && params[:move] == 'yes'
 
     redirect to('/')
   end

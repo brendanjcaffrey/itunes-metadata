@@ -136,6 +136,17 @@ TRACK_LOCATION_AND_DURATION = <<-SCRIPT
   output
 SCRIPT
 
+MOVE_TRACK = <<-SCRIPT
+  tell application "Music"
+    set fromPlaylist to item 1 of (every user playlist whose persistent ID is "%s")
+    set toPlaylist to item 1 of (every user playlist whose persistent ID is "%s")
+    set fromPlaylistTrack to item 1 of (every track of fromPlaylist whose persistent ID is "%s")
+
+    duplicate fromPlaylistTrack to toPlaylist
+    delete fromPlaylistTrack
+  end tell
+SCRIPT
+
 PlaylistTrack = Struct.new(:id, :desc)
 Track = Struct.new(:name, :artist, :album, :album_artist, :genre, :year, :track, :track_count, :disc, :disc_count, :start, :finish, :duration, :artworks)
 TRACK_FIELDS_COUNT = Track.new.length
@@ -171,6 +182,10 @@ module Library
 
   def delete_track_artwork(track_id)
     execute_applescript(DELETE_TRACK_ARTWORK, track_id)
+  end
+
+  def move_track(from_playlist_id, to_playlist_id, track_id)
+    execute_applescript(MOVE_TRACK, [from_playlist_id, to_playlist_id, track_id])
   end
 
 
