@@ -157,13 +157,18 @@
             audio.play();
           }
         }
+        function ensureMoveChecked() {
+          $("#move").prop("checked", true);
+        }
         function markStart() {
           setValue(["#start"], document.getElementById("audio").currentTime.toFixed(2));
           updateStartFinishPoints();
+          ensureMoveChecked();
         }
         function markFinish() {
           setValue(["#finish"], document.getElementById("audio").currentTime.toFixed(2));
           updateStartFinishPoints();
+          ensureMoveChecked();
         }
         function updateStartFinishPoints() {
           instance.points.getPoint("start").update({ time: parseFloat($("#start").val()) });
