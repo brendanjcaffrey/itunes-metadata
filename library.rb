@@ -191,7 +191,7 @@ module Library
 
   def execute_applescript(template, args = [])
     args = [args] unless args.is_a?(Array)
-    args = args.map { |arg| arg.to_s.gsub('"', '\"') }
+    args = args.map { |arg| arg.to_s.gsub('"', '\"').gsub('\\', '\\\\\\\\') }
     text = template % args
 
     file = Tempfile.new('applescript')
