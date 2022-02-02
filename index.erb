@@ -10,6 +10,9 @@
   <body>
     <div class="container">
       <div class="row">
+        <h5><%= playlist_tracks.size %> new track(s)</h5>
+      </div>
+      <div class="row">
         <ul>
         <% playlist_tracks.each do |track| %>
           <li><a href="/track/<%= track.id %>"><%= track.desc %></li>
