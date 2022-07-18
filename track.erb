@@ -57,6 +57,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peaks.js/0.22.0/peaks.min.js" integrity="sha512-gZN4ZaNuadKld2f/bNaVOMmkeS093+bPySI6fva+5hSHm/SQLbqbupWHYLaGFVYSOjBHhDCmkGxBccFtZqVMCg==" crossorigin="anonymous"></script>
     <script type="text/javascript">
       $(document).ready(() => {
+        // auto fix metadata
+        let autofixes = [
+          ['name', ' [Explicit]', ''],
+          ['artist', / feat.? (.+)/i, '', (match) => { $('#name').val(function() { return this.value + ` (feat. ${match[1]})`; }); }],
+          ['album', ' [Explicit]', ''],
+          ['album', / \(feat.? .+\)/i, ''],
+          ['genre', 'Dance & DJ', 'Electronic'],
+          ['genre', /^.+ House$/, 'House']
+        ];
+        autofixes.forEach((row) => {
+          let el = $('#' + row[0]);
+          let val = el.val();
+          if (row[3] && row[1] instanceof RegExp) {
+            let res = row[1].exec(val);
+            if (res) { row[3](res); }
+          }
+          el.val(val.replace(row[1], row[2]));
+        });
+
         var validGenres = [];
         $('.dropdown-item').each(function(index, obj) { validGenres.push($(this).text()); });
 
