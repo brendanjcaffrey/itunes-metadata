@@ -60,20 +60,30 @@
         // auto fix metadata
         let autofixes = [
           ['name', ' [Explicit]', ''],
+          ['name', ' (Original Mix)', ''],
+          ['name', / feat.? (.+)/i, ' (feat. $1)'],
+          ['name', / \(feat.? (.+?)\) \[Radio Edit\]/i, ' (Radio Edit feat. $1)'],
+          ['name', / \(Feat.? (.+?)\)/, ' (feat. $1)'],
+          ['name', / ft. (.+)/i, ' (feat. $1)'],
           ['artist', / feat.? (.+)/i, '', (match) => { $('#name').val(function() { return this.value + ` (feat. ${match[1]})`; }); }],
+          ['artist', / featuring (.+)/i, '', (match) => { $('#name').val(function() { return this.value + ` (feat. ${match[1]})`; }); }],
           ['album', ' [Explicit]', ''],
           ['album', / \(feat.? .+\)/i, ''],
+          ['album', / ft.? .+/i, ''],
           ['genre', 'Dance & DJ', 'Electronic'],
-          ['genre', /^.+ House$/, 'House']
+          ['genre', 'Rap & Hip-Hop', 'Hip Hop/Rap'],
+          ['genre', /^.+ House$/, 'House'],
+          ['name', / \(feat. (.+)\) \(feat. (.+)\)/i, ' (feat. $1)'],
         ];
         autofixes.forEach((row) => {
           let el = $('#' + row[0]);
           let val = el.val();
-          if (row[3] && row[1] instanceof RegExp) {
-            let res = row[1].exec(val);
-            if (res) { row[3](res); }
-          }
+          let res = null;
+          let should_exec = row[3] && row[1] instanceof RegExp;
+          if (should_exec) { res = row[1].exec(val); }
+
           el.val(val.replace(row[1], row[2]));
+          if (should_exec && res) { row[3](res); }
         });
 
         var validGenres = [];
