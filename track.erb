@@ -64,6 +64,7 @@
           ['name', / feat.? (.+)/i, ' (feat. $1)'],
           ['name', / \(feat.? (.+?)\) \[Radio Edit\]/i, ' (Radio Edit feat. $1)'],
           ['name', / \(Feat.? (.+?)\)/, ' (feat. $1)'],
+          ['name', / \[feat.? (.+?)\]/i, ' (feat. $1)'],
           ['name', / ft. (.+)/i, ' (feat. $1)'],
           ['artist', / feat.? (.+)/i, '', (match) => { $('#name').val(function() { return this.value + ` (feat. ${match[1]})`; }); }],
           ['artist', / featuring (.+)/i, '', (match) => { $('#name').val(function() { return this.value + ` (feat. ${match[1]})`; }); }],
@@ -73,6 +74,7 @@
           ['genre', 'Dance & DJ', 'Electronic'],
           ['genre', 'Rap & Hip-Hop', 'Hip Hop/Rap'],
           ['genre', /^.+ House$/, 'House'],
+          ['genre', 'Alternative Rock', 'Rock'],
           ['name', / \(feat. (.+)\) \(feat. (.+)\)/i, ' (feat. $1)'],
         ];
         autofixes.forEach((row) => {
