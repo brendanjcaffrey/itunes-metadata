@@ -217,6 +217,18 @@
         $("#mark-finish").click(markFinish);
         $("#start, #finish").bind("change", updateStartFinishPoints);
 
+        function setSpeed(e) {
+          let target = $(e.currentTarget);
+          let speed = parseFloat(target.attr('data-speed'));
+          $("#audio")[0].playbackRate = speed;
+          setTimeout(() => document.activeElement.blur(), 1);
+        }
+        function setSpeedShortcut(target) {
+          let el = $(target);
+          if (!el.is(":checked")) { el.click(); }
+        }
+        $("input[name=options]").change(setSpeed);
+
         $(window).keypress((e) => {
           if ($(e.target).is("input")) { return; }
           if (e.key === ' ' || e.key === 'Spacebar') {
@@ -228,6 +240,15 @@
           } else if (e.key === 'f') {
             e.preventDefault();
             markFinish();
+          } else if (e.key === 'q') {
+            e.preventDefault();
+            setSpeedShortcut("#speed-1x");
+          } else if (e.key === 'w') {
+            e.preventDefault();
+            setSpeedShortcut("#speed-1_25x");
+          } else if (e.key === 'e') {
+            e.preventDefault();
+            setSpeedShortcut("#speed-1_5x");
           }
         });
         $(window).keydown((e) => {
@@ -269,13 +290,24 @@
       <div class="row">
         <audio preload src="/audio/<%= track_id %>" id="audio"></audio>
         <div id="controls">
-          <button type="button" class="btn btn-sm btn-warning" id="mark-start">Mark Start</button>
-          <button type="button" class="btn btn-sm btn-dark" id="play-pause"><i class="fa fa-play"></i></button>
-          <button type="button" class="btn btn-sm btn-warning" id="mark-finish">Mark Finish</button>
+          <button type="button" class="btn btn-sm btn-outline-info" id="mark-start">Mark Start</button>
+          <button type="button" class="btn btn-sm btn-outline-info" id="mark-finish">Mark Finish</button>
+          <button type="button" class="btn btn-sm btn-outline-dark" id="play-pause"><i class="fa fa-play"></i></button>
+          <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-sm btn-outline-secondary active">
+              <input type="radio" name="options" id="speed-1x" autocomplete="off" data-speed="1.0" checked> 1x
+            </label>
+            <label class="btn btn-sm btn-outline-secondary">
+              <input type="radio" name="options" id="speed-1_25x" autocomplete="off" data-speed="1.25"> 1.25x
+            </label>
+            <label class="btn btn-sm btn-outline-secondary">
+              <input type="radio" name="options" id="speed-1_5x" autocomplete="off" data-speed="1.5"> 1.5x
+            </label>
+          </div>
         </div>
       </div>
       <div class="row justify-content-center">
-        <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause</div>
+        <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause, q/w/e to change speed</div>
       </div>
       <div class="row justify-content-center">
         <form action="/track/<%= track_id %>" method="post">
