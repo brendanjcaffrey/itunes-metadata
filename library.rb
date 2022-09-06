@@ -11,6 +11,7 @@ PLAYLIST_TRACKS = <<-SCRIPT
         end if
         repeat with thisTrack in file tracks of thisPlaylist
           set output to output & persistent ID of thisTrack & "::"
+          set output to output & date added of thisTrack & "::"
           set output to output & artist of thisTrack & " - "
           set output to output & name of thisTrack & "\n"
         end repeat
@@ -147,7 +148,13 @@ MOVE_TRACK = <<-SCRIPT
   end tell
 SCRIPT
 
-PlaylistTrack = Struct.new(:id, :desc)
+PlaylistTrack = Struct.new(:id, :date, :desc) do
+  def <=>(other)
+    val = date.<=>(other.date)
+    return val if val != 0
+    id.<=>(other.id)
+  end
+end
 Track = Struct.new(:name, :artist, :album, :album_artist, :genre, :year, :track, :track_count, :disc, :disc_count, :start, :finish, :duration, :artworks)
 TRACK_FIELDS_COUNT = Track.new.length
 
@@ -155,8 +162,10 @@ module Library
   module_function
 
   def get_playlist_tracks(playlist_id)
-    lines = execute_applescript(PLAYLIST_TRACKS, playlist_id).split("\n").sort
-    lines.map { |line| PlaylistTrack.new(*line.split('::', 2)) }
+    lines = execute_applescript(PLAYLIST_TRACKS, playlist_id).split("\n")
+    tracks = lines.map { |line| PlaylistTrack.new(*line.split('::', 3)) }
+    tracks.each { |track| track.date = DateTime.parse(track.date) }
+    tracks.sort
   end
 
   def get_track(track_id, artwork_out_dir)
