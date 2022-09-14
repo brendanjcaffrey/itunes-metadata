@@ -78,6 +78,11 @@
           ['genre', 'Hip-Hop/Rap', 'Hip Hop/Rap'],
           ['genre', /^.+ House$/, 'House'],
           ['genre', 'Alternative Rock', 'Rock'],
+          ['genre', 'Melodic House & Techno', 'House'],
+          ['genre', 'Electronica', 'Electronic'],
+          ['genre', 'Mainstage', 'House'],
+          ['genre', /^Electronic \/ .+/, 'Electronic'],
+          ['genre', /^Techno \(.+\)/, 'Electronic'],
           ['name', / \(feat. (.+)\) \(feat. (.+)\)/i, ' (feat. $1)'],
         ];
         autofixes.forEach((row) => {
