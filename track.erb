@@ -61,7 +61,7 @@
         let autofixes = [
           ['name', ' [Explicit]', ''],
           ['name', ' (Original Mix)', ''],
-          ['name', / feat.? (.+)/i, ' (feat. $1)'],
+          ['name', / feat.? (.+)[^\)]$/i, ' (feat. $1)'],
           ['name', / \(feat.? (.+?)\) \[Radio Edit\]/i, ' (Radio Edit feat. $1)'],
           ['name', / \(Feat.? (.+?)\)/, ' (feat. $1)'],
           ['name', / \[feat.? (.+?)\]/i, ' (feat. $1)'],
