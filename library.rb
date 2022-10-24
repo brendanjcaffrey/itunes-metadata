@@ -103,6 +103,7 @@ SET_TRACK_INFO = <<-SCRIPT
     set composer of thisTrack to ""
     set compilation of thisTrack to false
     set grouping of thisTrack to ""
+    set lyrics of thisTrack to ""
   end tell
 
   output
