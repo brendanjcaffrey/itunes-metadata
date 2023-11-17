@@ -5,17 +5,21 @@
     <style type="text/css">
       .container { margin-top: 8px; }
       a.btn { margin: 4px; }
+      .last-viewed { font-weight: bold; }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="row">
-        <h5><%= playlist_tracks.size %> new track(s)</h5>
+        <h5>
+          <%= playlist_tracks.size %> new track<%= playlist_tracks.size == 1 ? '' : 's' %>
+          <a href="/reverse"><ion-icon name="arrow-<%= reverse ? 'up' : 'down' %>-outline" size="small"></ion-icon></a>
+        </h5>
       </div>
       <div class="row">
         <ul>
         <% playlist_tracks.each do |track| %>
-          <li><a href="/track/<%= track.id %>"><%= track.desc %></li>
+          <li<%= ' class="last-viewed"' if track.id == last_viewed %>><a href="/track/<%= track.id %>"><%= track.desc %></li>
         <% end %>
         </ul>
       </div>
@@ -23,5 +27,8 @@
         <a href="/album" class="btn btn-sm btn-primary">Album</a>
       </div>
     </div>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   </body>
 </html>

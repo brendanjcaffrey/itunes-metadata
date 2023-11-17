@@ -26,13 +26,22 @@ class Server < Sinatra::Base
   set :environment, :development
   set :views, '.'
   set :public_folder, File.dirname(__FILE__) + '/artwork'
+  enable :sessions
 
   before do
     headers 'Access-Control-Allow-Origin' => '*'
   end
 
   get '/' do
-    erb :index, locals: { playlist_tracks: Library.get_playlist_tracks(PLAYLIST_ID) }
+    reverse = !!session[:reverse]
+    tracks = Library.get_playlist_tracks(PLAYLIST_ID)
+    tracks.reverse! if reverse
+    erb :index, locals: { playlist_tracks: tracks, last_viewed: session[:last_viewed], reverse: reverse }
+  end
+
+  get '/reverse' do
+    session[:reverse] = !session[:reverse]
+    redirect to('/')
   end
 
   get '/audio/:id' do
@@ -59,6 +68,7 @@ class Server < Sinatra::Base
 
   get '/track/:id' do
     id = params[:id]
+    session[:last_viewed] = id
     Thread.new do
       converted_file, in_progress = get_converted_info(id)
       in_file, _ = Library.get_track_location_and_duration(id)
