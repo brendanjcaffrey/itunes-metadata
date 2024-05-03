@@ -54,7 +54,7 @@
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/peaks.js/0.22.0/peaks.min.js" integrity="sha512-gZN4ZaNuadKld2f/bNaVOMmkeS093+bPySI6fva+5hSHm/SQLbqbupWHYLaGFVYSOjBHhDCmkGxBccFtZqVMCg==" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/peaks.js/dist/peaks.js"></script>
     <script type="text/javascript">
       $(document).ready(() => {
         // auto fix metadata
@@ -81,6 +81,7 @@
           ['genre', 'Melodic House & Techno', 'House'],
           ['genre', 'Electronica', 'Electronic'],
           ['genre', 'Mainstage', 'House'],
+          ['genre', 'Drum & Bass', 'Electronic'],
           ['genre', /^Electronic \/ .+/, 'Electronic'],
           ['genre', /^Techno \(.+\)/, 'Electronic'],
           ['name', / \(feat. (.+)\) \(feat. (.+)\)/i, ' (feat. $1)'],
@@ -145,20 +146,24 @@
 
         // waveforms/audio
         const options = {
-          containers: {
-            zoomview: document.getElementById('zoomview-container'),
-            overview: document.getElementById('overview-container')
+          zoomview: {
+            container: document.getElementById('zoomview-container'),
+            waveformColor: 'rgb(63, 77, 155)',
+            axisGridlineColor: 'rgba(0,0,0,0.5)',
+            axisLabelColor: 'rgba(0,0,0,0.5)'
+          },
+          overview: {
+            container: document.getElementById('overview-container'),
+            waveformColor: 'rgba(63, 77, 155, 0.75)',
+            highlightColor: 'transparent',
+            axisGridlineColor: 'rgba(0,0,0,0.5)',
+            axisLabelColor: 'rgba(0,0,0,0.5)'
           },
           mediaElement: document.querySelector('audio'),
           dataUri: {
             arraybuffer: "/waveform/<%= track_id %>.dat"
           },
-          zoomWaveformColor: 'rgb(63, 77, 155)',
-          overviewWaveformColor: 'rgba(63, 77, 155, 0.75)',
-          overviewHighlightColor: 'transparent',
           pointMarkerColor: '#000000',
-          axisGridlineColor: 'transparent',
-          axisLabelColor: 'rgba(0,0,0,0.5)',
           logger: console.error.bind(console),
           points: [
             { time: parseFloat($("#start").val()), labelText: "", id: "start" },
@@ -234,6 +239,23 @@
         }
         $("input[name=options]").change(setSpeed);
 
+        var originalOverviewSize = 1140;
+        var overviewSize = originalOverviewSize;
+        function setOverviewSize() {
+          $("#overview-container")[0].style.width = `${overviewSize}px`;
+          instance.views.getView('overview').fitToContainer();
+        }
+        function growOverview(e) {
+          overviewSize += originalOverviewSize;
+          setOverviewSize();
+        }
+        function shrinkOverview(e) {
+          overviewSize = Math.max(originalOverviewSize, overviewSize - originalOverviewSize);
+          setOverviewSize();
+        }
+        $("#grow-overview").click(growOverview);
+        $("#shrink-overview").click(shrinkOverview);
+
         $(window).keypress((e) => {
           if ($(e.target).is("input")) { return; }
           if (e.key === ' ' || e.key === 'Spacebar') {
@@ -254,6 +276,10 @@
           } else if (e.key === 'e') {
             e.preventDefault();
             setSpeedShortcut("#speed-1_5x");
+          } else if (e.key === '+') {
+            growOverview();
+          } else if (e.key === '-') {
+            shrinkOverview();
           }
         });
         $(window).keydown((e) => {
@@ -309,10 +335,13 @@
               <input type="radio" name="options" id="speed-1_5x" autocomplete="off" data-speed="1.5"> 1.5x
             </label>
           </div>
+
+          <button type="button" class="btn btn-sm btn-outline-dark" id="shrink-overview"><i class="fa fa-minus"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-dark" id="grow-overview"><i class="fa fa-plus"></i></button>
         </div>
       </div>
       <div class="row justify-content-center">
-        <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause, q/w/e to change speed</div>
+        <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause, q/w/e to change speed, +/- to change overview waveform width</div>
       </div>
       <div class="row justify-content-center">
         <form action="/track/<%= track_id %>" method="post">
