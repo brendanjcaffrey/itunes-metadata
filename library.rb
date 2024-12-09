@@ -198,10 +198,13 @@ module Library
     execute_applescript(MOVE_TRACK, [from_playlist_id, to_playlist_id, track_id])
   end
 
+  def escape_applescript_string(str)
+    str.to_s.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
+  end
 
   def execute_applescript(template, args = [])
     args = [args] unless args.is_a?(Array)
-    args = args.map { |arg| arg.to_s.gsub('"', '\"').gsub('\\', '\\\\\\\\') }
+    args = args.map { escape_applescript_string(_1) }
     text = template % args
 
     file = Tempfile.new('applescript')
@@ -209,8 +212,14 @@ module Library
     file.close
 
     output = `osascript #{file.path}`
-    file.unlink
+    exit_status = $?.exitstatus
+    if exit_status != 0
+      puts "error executing applescript: #{output}"
+      puts `cat #{file.path}`
+    end
 
+    file.unlink
+    raise 'applescript failed' if exit_status != 0
     output
   end
 end

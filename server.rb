@@ -26,6 +26,7 @@ class Server < Sinatra::Base
   set :environment, :development
   set :views, '.'
   set :public_folder, File.dirname(__FILE__) + '/artwork'
+  set :port, 4568
   enable :sessions
 
   before do
@@ -52,7 +53,7 @@ class Server < Sinatra::Base
       file = converted_file
 
       log = true
-      while File.exists?(in_progress) || !File.exists?(converted_file)
+      while File.exist?(in_progress) || !File.exist?(converted_file)
         puts "Waiting on conversion for #{converted_file}..." if log
         log = false
         sleep 0.5
@@ -72,7 +73,7 @@ class Server < Sinatra::Base
     Thread.new do
       converted_file, in_progress = get_converted_info(id)
       in_file, _ = Library.get_track_location_and_duration(id)
-      if !is_wav(in_file) && !File.exists?(converted_file)
+      if !is_wav(in_file) && !File.exist?(converted_file)
         FileUtils.touch(in_progress)
         puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
         puts "ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
@@ -156,14 +157,14 @@ class Server < Sinatra::Base
       file = converted_file
 
       log = true
-      while File.exists?(in_progress) || !File.exists?(converted_file)
+      while File.exist?(in_progress) || !File.exist?(converted_file)
         puts "Waiting on conversion for #{destination}..." if log
         log = false
         sleep 0.5
       end
     end
 
-    if !File.exists?(destination)
+    if !File.exist?(destination)
       puts "audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -b 8 &>/dev/null"
       `audiowaveform -i #{file.shellescape} -o #{destination.shellescape} -b 8 &>/dev/null`
     end
