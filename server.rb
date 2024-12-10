@@ -1,7 +1,7 @@
 require 'sinatra/base'
-require 'sinatra/json'
 require 'htmlentities'
 require 'fileutils'
+require 'shellwords'
 require_relative 'library'
 
 PLAYLIST_ID = '4D860944EB057E94'
@@ -27,6 +27,9 @@ class Server < Sinatra::Base
   set :views, '.'
   set :public_folder, File.dirname(__FILE__) + '/artwork'
   set :port, 4568
+  set :server_settings, {
+    ShutdownTimeout: 1
+  }
   enable :sessions
 
   before do
@@ -70,17 +73,15 @@ class Server < Sinatra::Base
   get '/track/:id' do
     id = params[:id]
     session[:last_viewed] = id
-    Thread.new do
-      converted_file, in_progress = get_converted_info(id)
-      in_file, _ = Library.get_track_location_and_duration(id)
-      if !is_wav(in_file) && !File.exist?(converted_file)
-        FileUtils.touch(in_progress)
-        puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
-        puts "ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
-        `ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null`
-        puts "======== Conversion Done #{File.basename(in_file)} -> #{converted_file} ========"
-        FileUtils.rm(in_progress)
-      end
+
+    converted_file, in_progress = get_converted_info(id)
+    in_file, _ = Library.get_track_location_and_duration(id)
+    if !is_wav(in_file) && !File.exist?(converted_file)
+      FileUtils.touch(in_progress)
+      puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
+      puts "ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
+      pid = Process.spawn("ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null; rm #{in_progress.shellescape}")
+      Process.detach(pid)
     end
 
     erb :track, locals: { track_id: params[:id], track: Library.get_track(params[:id], ARTWORK_DIR)}

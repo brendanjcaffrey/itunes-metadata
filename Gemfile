@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
-gem 'sinatra'
-gem 'sinatra-contrib'
-gem 'thin'
 gem 'htmlentities'
+gem 'webrick'
+gem 'rackup'
 gem 'rake'
+gem 'sinatra'
