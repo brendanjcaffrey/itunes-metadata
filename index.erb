@@ -7,6 +7,15 @@
       a.btn { margin: 4px; }
       .last-viewed { font-weight: bold; }
     </style>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      $(document).ready(() => {
+        const lastViewed = $('.last-viewed');
+        if (lastViewed.length > 0) {
+          lastViewed[0].scrollIntoView({ behavior: 'instant', block: 'center' });
+        }
+      });
+    </script>
   </head>
   <body>
     <div class="container">
