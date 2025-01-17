@@ -20,8 +20,9 @@
       tr.noborder td { border-color: transparent; }
       div.tiny { font-size: 60%; padding: 0; margin-bottom: 0; }
       td div.alert { padding: 8px 0 0 0; }
-      div#zoomview-container { width: 1140px; height: 100px; }
-      div#overview-container { width: 1140px; height: 50px; }
+      div#zoomview-container { width: 100vw; height: 100px; position: absolute; left: 0 }
+      div#overview-container { width: 100vw; height: 50px; position: absolute; left: 0; margin-top: 100px; }
+      div.under-overview { margin-top: 150px; }
       div#controls { margin: 4px auto; }
 
       .flash{
@@ -239,10 +240,10 @@
         }
         $("input[name=options]").change(setSpeed);
 
-        var originalOverviewSize = 1140;
+        var originalOverviewSize = 100;
         var overviewSize = originalOverviewSize;
         function setOverviewSize() {
-          $("#overview-container")[0].style.width = `${overviewSize}px`;
+          $("#overview-container")[0].style.width = `${overviewSize}vw`;
           instance.views.getView('overview').fitToContainer();
         }
         function growOverview(e) {
@@ -318,7 +319,7 @@
           <div id="overview-container"></div>
         </div>
       </div>
-      <div class="row">
+      <div class="row under-overview">
         <audio preload src="/audio/<%= track_id %>" id="audio"></audio>
         <div id="controls">
           <button type="button" class="btn btn-sm btn-outline-info" id="mark-start">Mark Start</button>
