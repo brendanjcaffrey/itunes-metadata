@@ -13,6 +13,11 @@ task :default do
     File.delete('waveforms/' + f)
   end
 
+  Dir.foreach('beats') do |f|
+    next if f[0] == '.'
+    File.delete('beats/' + f)
+  end
+
   Dir.foreach('audio') do |f|
     next if f[0] == '.'
     File.delete('audio/' + f)

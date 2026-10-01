@@ -42,6 +42,7 @@ TRACK_INFO = <<-SCRIPT
     set output to output & disc count of thisTrack & "\n"
     set output to output & start of thisTrack & "\n"
     set output to output & finish of thisTrack & "\n"
+    set output to output & bpm of thisTrack & "\n"
     set output to output & duration of thisTrack & "\n"
   end tell
 
@@ -105,6 +106,10 @@ SET_TRACK_INFO = <<-SCRIPT
     set compilation of thisTrack to false
     set grouping of thisTrack to ""
     set lyrics of thisTrack to ""
+    set theBpm to %s
+    if theBpm > 0 then
+      set bpm of thisTrack to theBpm
+    end if
   end tell
 
   output
@@ -157,7 +162,7 @@ PlaylistTrack = Struct.new(:id, :date, :desc) do
     id.<=>(other.id)
   end
 end
-Track = Struct.new(:name, :artist, :album, :album_artist, :genre, :year, :track, :track_count, :disc, :disc_count, :start, :finish, :duration, :artworks)
+Track = Struct.new(:name, :artist, :album, :album_artist, :genre, :year, :track, :track_count, :disc, :disc_count, :start, :finish, :bpm, :duration, :artworks)
 TRACK_FIELDS_COUNT = Track.new.length
 
 module Library
@@ -188,7 +193,8 @@ module Library
 
   def set_track_info(track_id, track, update_times = true)
     puts execute_applescript(SET_TRACK_INFO, [track_id, update_times.to_s, track.name, track.artist, track.album, track.album_artist,
-      track.genre, track.year, track.track, track.track_count, track.disc, track.disc_count, track.start, track.finish])
+      track.genre, track.year, track.track, track.track_count, track.disc, track.disc_count, track.start, track.finish,
+      track.bpm.to_f.round])
   end
 
   def delete_track_artwork(track_id)
