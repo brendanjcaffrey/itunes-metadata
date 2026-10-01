@@ -85,8 +85,8 @@ class Server < Sinatra::Base
     if !is_wav(in_file) && !File.exist?(converted_file)
       FileUtils.touch(in_progress)
       puts "======== Starting Conversion #{File.basename(in_file)} -> #{converted_file} ========"
-      puts "ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
-      pid = Process.spawn("ffmpeg -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null; rm #{in_progress.shellescape}")
+      puts "ffmpeg -formatprobesize 2097152 -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null"
+      pid = Process.spawn("ffmpeg -formatprobesize 2097152 -i #{in_file.shellescape} #{converted_file.shellescape} &>/dev/null; rm #{in_progress.shellescape}")
       Process.detach(pid)
     end
 
