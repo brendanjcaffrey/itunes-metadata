@@ -184,4 +184,38 @@ class ServerTest < AnalysisTest
     status = JSON.parse(@request.get('/api/status').body)
     assert_equal "Track #{A}", status['tracks'].first['description']
   end
+
+  def test_moved_track_is_immediately_removed_from_main_view_and_status_cache
+    [A, B, C].each { |id| cache(id) }
+    moved = []
+    Library.stub(:set_track_info, nil) do
+      Library.stub(:move_track, ->(*args) { moved << args }) do
+        response = @request.post("/track/#{A.downcase}", params: { name: 'Title', artist: 'Artist', move: 'yes' })
+        assert_equal 303, response.status
+        assert_equal '/', URI.parse(response['location']).path
+      end
+    end
+
+    assert_equal [[PLAYLIST_ID, TO_PLAYLIST_ID, A]], moved
+    response = @request.get('/')
+    refute_includes response.body, "data-id=\"#{A}\""
+    assert_includes response.body, "data-id=\"#{B}\""
+    status = JSON.parse(@request.get('/api/status').body)
+    assert_equal [B, C], status['tracks'].map { |track| track['id'] }
+    assert_equal 2, status['total']
+  end
+
+  def test_failed_move_keeps_track_in_main_view_cache
+    cache(A)
+    @library.tracks = [@library.tracks.first]
+    Library.stub(:set_track_info, nil) do
+      Library.stub(:move_track, ->(*) { raise 'Music move failed' }) do
+        response = @request.post("/track/#{A}", params: { name: 'Title', artist: 'Artist', move: 'yes' })
+        assert_equal 500, response.status
+      end
+    end
+
+    assert_includes @request.get('/').body, "data-id=\"#{A}\""
+    assert_equal [A], @queue.playlist_tracks.map(&:id)
+  end
 end

@@ -36,6 +36,8 @@ previous playlist and caches are kept until a successful refresh.
 
 Saving the track form immediately updates the cached title/artist description
 used by the main view and status endpoint, without rerunning audio analysis.
+Moving a track on save removes it from that cached playlist immediately after
+the move succeeds, without waiting for the next playlist refresh.
 
 GET /api/status reports per-track stages, available artifacts, detected BPM,
 queue order, errors and playlist refresh time. The main view polls it every

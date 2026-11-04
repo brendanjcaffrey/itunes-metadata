@@ -105,7 +105,10 @@ class Server < Sinatra::Base
     Library.set_track_info(id, track)
     settings.analysis_queue.update_track(id, track)
     Library.delete_track_artwork(id) if params[:clear_artworks] && params[:clear_artworks] == 'yes'
-    Library.move_track(PLAYLIST_ID, TO_PLAYLIST_ID, id) if params[:move] && params[:move] == 'yes'
+    if params[:move] == 'yes'
+      Library.move_track(PLAYLIST_ID, TO_PLAYLIST_ID, id)
+      settings.analysis_queue.remove_track(id)
+    end
 
     redirect to('/')
   end

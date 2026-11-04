@@ -1,6 +1,53 @@
 require_relative 'test_helper'
 
 class AnalysisQueueTest < AnalysisTest
+  def test_removal_survives_an_older_in_flight_playlist_refresh
+    @queue.refresh
+    snapshot_read = Queue.new
+    finish_refresh = Queue.new
+    @library.define_singleton_method(:get_playlist_tracks) do |_|
+      snapshot = tracks.map(&:dup)
+      snapshot_read << true
+      finish_refresh.pop
+      snapshot
+    end
+
+    refresh = Thread.new { @queue.refresh }
+    Timeout.timeout(5) { snapshot_read.pop }
+    removal = Thread.new { @queue.remove_track(A) }
+    eventually { removal.status == 'sleep' || !removal.alive? }
+    finish_refresh << true
+    [refresh, removal].each { |thread| Timeout.timeout(5) { thread.value } }
+
+    assert_equal [B, C], @queue.playlist_tracks.map(&:id)
+    assert_equal [B, C], @queue.status[:tracks].map { |track| track[:id] }
+    assert_equal [B, C], @queue.status[:queue]
+  ensure
+    finish_refresh << true if finish_refresh
+    [refresh, removal].compact.each(&:join)
+  end
+
+  def test_removal_cleans_queued_tracks_and_defers_active_cleanup_until_work_finishes
+    cache(A, complete: false)
+    cache(B, complete: false)
+    @analyzer.hold(A)
+    @queue.start
+    assert_equal A, next_started
+
+    @queue.remove_track(A)
+    @queue.remove_track(B)
+    assert_equal [C], @queue.playlist_tracks.map(&:id)
+    assert_equal [C], @queue.status[:queue]
+    assert File.exist?(@analyzer.paths(A)[:audio]), 'active inputs must remain until work finishes'
+    @analyzer.paths(B).each_value { |path| refute File.exist?(path) }
+    assert_raises(AnalysisQueue::NotFound) { @queue.wait_for(A, :audio) }
+
+    @analyzer.release_all
+    eventually { @queue.status[:analyzed] == 1 && @queue.status[:active].nil? }
+    assert_equal [A, C], @analyzer.calls
+    @analyzer.paths(A).each_value { |path| refute File.exist?(path) }
+  end
+
   def test_saved_metadata_survives_an_older_in_flight_playlist_refresh
     @queue.refresh
     snapshot_read = Queue.new

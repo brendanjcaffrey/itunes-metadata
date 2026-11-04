@@ -66,6 +66,20 @@ class AnalysisQueue
     end
   end
 
+  def remove_track(id)
+    # Wait for older playlist reads before removing the saved track, so their
+    # snapshots cannot put it back in the main view.
+    @refresh_mutex.synchronize do
+      @mutex.synchronize do
+        @tracks.reject! { |track| track.id == id }
+        @states.delete(id)
+        @queue.delete(id)
+        @analyzer.delete(id) unless id == @active
+        @changed.broadcast
+      end
+    end
+  end
+
   def refresh
     @refresh_mutex.synchronize do
       tracks = @library.get_playlist_tracks(@playlist_id).uniq(&:id)
