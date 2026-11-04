@@ -103,6 +103,14 @@ class AnalysisQueue
     @mutex.synchronize { prioritize_locked(id) }
   end
 
+  def playback_file(id)
+    prioritize(id)
+    source, = @library.get_track_location_and_duration(id)
+    return source if File.extname(source).downcase == '.mp3' && File.file?(source) && File.size?(source)
+
+    wait_for(id, :audio)
+  end
+
   # Requests wait for their artifact, not for unrelated stages or the entire
   # playlist. Errors and timeouts become HTTP responses instead of infinite waits.
   def wait_for(id, artifact, timeout: 300)

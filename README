@@ -14,6 +14,15 @@ Audio, waveforms and beat grids are cached by Music's persistent track ID and
 reused across restarts and tag/path changes. New files are published atomically,
 so interrupted work is retried rather than served as a completed result.
 
+Playback serves the original MP3 when available, with the cached WAV as a
+fallback for other source formats. The track page downloads the complete audio
+file when opened. To avoid inaccurate variable-bitrate MP3 seeks in Firefox,
+it decodes downloaded MP3s once in the browser and plays a local PCM WAV blob.
+The WAV is created locally, so only the smaller original MP3 crosses the
+network. This uses additional browser memory while the page is open. Playback
+controls enable after loading; failed downloads show a retry button. Cached
+server WAVs still provide the input for waveform and BPM analysis.
+
 The playlist refreshes every 60 seconds in a separate background thread. Set
 PLAYLIST_REFRESH_INTERVAL to change the interval in seconds. Refreshes queue new
 tracks, retry failures, update track descriptions and delete cached audio,
@@ -31,3 +40,5 @@ requests return 503 on failure or after a five-minute wait (with Retry-After),
 and 404 for tracks outside the playlist.
 
 Run the tests with rake test.
+The browser download helper can also be tested without dependencies using
+Node's built-in runner: node --test test/*_test.js.

@@ -6,7 +6,7 @@ require_relative '../library'
 require_relative '../analysis_queue'
 
 class FakeLibrary
-  attr_accessor :tracks, :refresh_error
+  attr_accessor :tracks, :refresh_error, :source
   attr_reader :lookups
 
   def initialize(ids, source)

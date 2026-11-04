@@ -50,10 +50,62 @@ class ServerTest < AnalysisTest
     assert_equal [A], @analyzer.calls
   end
 
+  def test_original_mp3_is_served_in_full_without_waiting_for_analysis
+    @library.tracks = [@library.tracks.first]
+    @library.source = File.join(@root, 'original with spaces.MP3')
+    File.write(@library.source, 'original MP3 bytes')
+    @analyzer.hold(A)
+    @queue.start
+    assert_equal A, next_started
+
+    response = @request.get("/audio/#{A.downcase}")
+    assert_equal 200, response.status
+    assert_equal 'audio/mpeg', response['content-type']
+    assert_equal 'original MP3 bytes', response.body
+    assert_equal response.body.bytesize, response['content-length'].to_i
+    refute File.exist?(@analyzer.paths(A)[:audio])
+  end
+
+  def test_original_mp3_is_preferred_over_cached_wav
+    cache(A)
+    @library.tracks = [@library.tracks.first]
+    @library.source = File.join(@root, 'original.mp3')
+    File.write(@library.source, 'original MP3 bytes')
+
+    response = @request.get("/audio/#{A}")
+    assert_equal 200, response.status
+    assert_equal 'audio/mpeg', response['content-type']
+    assert_equal 'original MP3 bytes', response.body
+    assert_empty @analyzer.calls
+    assert_equal 'cached audio', File.read(@analyzer.paths(A)[:audio])
+  end
+
+  def test_missing_mp3_falls_back_to_cached_wav
+    cache(A)
+    @library.tracks = [@library.tracks.first]
+    @library.source = File.join(@root, 'missing.mp3')
+
+    response = @request.get("/audio/#{A}")
+    assert_equal 200, response.status
+    assert_equal 'audio/wav', response['content-type']
+    assert_equal 'cached audio', response.body
+  end
+
+  def test_audio_download_script_is_served
+    response = @request.get('/audio-download.js')
+    assert_equal 200, response.status
+    assert_includes response['content-type'], 'application/javascript'
+    assert_equal File.read(File.expand_path('../audio-download.js', __dir__)), response.body
+  end
+
   def test_unknown_tracks_return_json_404
     response = @request.get('/beats/0123456789ABCDEF.json')
     assert_equal 404, response.status
     assert_equal 'Track is not in the playlist', JSON.parse(response.body)['error']
+
+    response = @request.get('/audio/0123456789ABCDEF')
+    assert_equal 404, response.status
+    refute_includes @library.lookups, '0123456789ABCDEF'
   end
 
   def test_tool_failure_returns_json_503_with_retry_after
@@ -74,6 +126,8 @@ class ServerTest < AnalysisTest
       response = @request.get("/track/#{C}")
       assert_equal 200, response.status
       assert_includes response.body, "/audio/#{C}"
+      refute_match(/<audio\b[^>]*\bsrc=/, response.body)
+      assert_match(/id="play-pause" disabled/, response.body)
     end
     assert_equal [C, B], @queue.status[:queue]
   end

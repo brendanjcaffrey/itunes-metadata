@@ -62,8 +62,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/peaks.js@3.4.2/dist/peaks.js"></script>
+    <script src="/audio-download.js"></script>
     <script type="text/javascript">
+      // jQuery 3.2.1 does not recognize async functions as ready callbacks.
       $(document).ready(() => {
+        initializeTrackPage().catch(error => {
+          document.getElementById('audio-status').textContent = `Unable to initialize track: ${error.message}`;
+          console.error('Track initialization failed:', error);
+        });
+      });
+
+      async function initializeTrackPage() {
         // auto fix metadata
         let autofixes = [
           ['name', ' [Explicit]', ''],
@@ -155,6 +164,24 @@
         });
 
         // waveforms/audio
+        const audio = document.getElementById('audio');
+        const audioStatus = document.getElementById('audio-status');
+        const retryAudio = document.getElementById('retry-audio');
+        while (true) {
+          audioStatus.textContent = 'Downloading audio…';
+          retryAudio.hidden = true;
+          try {
+            await downloadTrackAudio(audio, '/audio/<%= track_id %>');
+            break;
+          } catch (error) {
+            if (error.name === 'AbortError') { return; }
+            audioStatus.textContent = `Audio download failed: ${error.message}`;
+            retryAudio.hidden = false;
+            await new Promise(resolve => retryAudio.addEventListener('click', resolve, { once: true }));
+          }
+        }
+        audioStatus.textContent = 'Audio downloaded · loading waveform…';
+        let playerReady = false;
         const options = {
           zoomview: {
             container: document.getElementById('zoomview-container'),
@@ -169,7 +196,7 @@
             axisGridlineColor: 'rgba(0,0,0,0.5)',
             axisLabelColor: 'rgba(0,0,0,0.5)'
           },
-          mediaElement: document.querySelector('audio'),
+          mediaElement: audio,
           dataUri: {
             arraybuffer: "/waveform/<%= track_id %>.dat"
           },
@@ -183,9 +210,14 @@
 
         const instance = peaks.init(options, function(err, peaks) {
           if (err) {
+            audioStatus.textContent = 'Audio downloaded, but the waveform could not be loaded. Reload to retry.';
             console.error('Failed to initialize Peaks instance: ' + err.message);
             return;
           }
+          playerReady = true;
+          updateStartFinishPoints();
+          document.getElementById('audio-status-row').hidden = true;
+          $('#controls button, #controls input').prop('disabled', false);
         });
         var savedTime = -1;
         var playing = false;
@@ -225,13 +257,12 @@
           ensureMoveChecked();
         }
         function updateStartFinishPoints() {
+          if (!playerReady) { return; }
           instance.points.getPoint("start").update({ time: parseFloat($("#start").val()) });
           instance.points.getPoint("finish").update({ time: parseFloat($("#finish").val()) });
         }
         $("#audio").bind("play", startedPlaying);
         $("#audio").bind("pause", stoppedPlaying);
-        // need to wait for audio file to fully load to get the duration
-        // $("#audio").bind("canplaythrough", updateStartFinishPoints); TODO?
         $("#play-pause").click(togglePlayPause);
         $("#mark-start").click(markStart);
         $("#mark-finish").click(markFinish);
@@ -399,7 +430,7 @@
         $("#shrink-overview").click(shrinkOverview);
 
         $(window).keypress((e) => {
-          if ($(e.target).is("input")) { return; }
+          if (!playerReady || $(e.target).is("input")) { return; }
           if (e.key === ' ' || e.key === 'Spacebar') {
             e.preventDefault();
             togglePlayPause();
@@ -452,7 +483,7 @@
           }
         });
         $(window).keydown((e) => {
-          if ($(e.target).is("input") || savedTime != -1) { return; }
+          if (!playerReady || $(e.target).is("input") || savedTime != -1) { return; }
           var newSavedTime = -1;
           var audio = document.getElementById("audio");
           if (e.key === 'a') {
@@ -476,7 +507,7 @@
             savedTime = -1;
           }
         });
-      });
+      }
     </script>
   </head>
   <body>
@@ -488,25 +519,25 @@
         </div>
       </div>
       <div class="row under-overview">
-        <audio preload src="/audio/<%= track_id %>" id="audio"></audio>
+        <audio preload="auto" id="audio"></audio>
         <div id="controls">
-          <button type="button" class="btn btn-sm btn-outline-info" id="mark-start">Mark Start</button>
-          <button type="button" class="btn btn-sm btn-outline-info" id="mark-finish">Mark Finish</button>
-          <button type="button" class="btn btn-sm btn-outline-dark" id="play-pause"><i class="fa fa-play"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-info" id="mark-start" disabled>Mark Start</button>
+          <button type="button" class="btn btn-sm btn-outline-info" id="mark-finish" disabled>Mark Finish</button>
+          <button type="button" class="btn btn-sm btn-outline-dark" id="play-pause" disabled><i class="fa fa-play"></i></button>
           <div class="btn-group btn-group-toggle" data-toggle="buttons">
             <label class="btn btn-sm btn-outline-secondary active">
-              <input type="radio" name="options" id="speed-1x" autocomplete="off" data-speed="1.0" checked> 1x
+              <input type="radio" name="options" id="speed-1x" autocomplete="off" data-speed="1.0" checked disabled> 1x
             </label>
             <label class="btn btn-sm btn-outline-secondary">
-              <input type="radio" name="options" id="speed-1_25x" autocomplete="off" data-speed="1.25"> 1.25x
+              <input type="radio" name="options" id="speed-1_25x" autocomplete="off" data-speed="1.25" disabled> 1.25x
             </label>
             <label class="btn btn-sm btn-outline-secondary">
-              <input type="radio" name="options" id="speed-1_5x" autocomplete="off" data-speed="1.5"> 1.5x
+              <input type="radio" name="options" id="speed-1_5x" autocomplete="off" data-speed="1.5" disabled> 1.5x
             </label>
           </div>
 
-          <button type="button" class="btn btn-sm btn-outline-dark" id="shrink-overview"><i class="fa fa-minus"></i></button>
-          <button type="button" class="btn btn-sm btn-outline-dark" id="grow-overview"><i class="fa fa-plus"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-dark" id="shrink-overview" disabled><i class="fa fa-minus"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-dark" id="grow-overview" disabled><i class="fa fa-plus"></i></button>
         </div>
         <div id="beat-controls">
           <div class="btn-group btn-group-sm" role="group">
@@ -523,6 +554,10 @@
           </div>
           <button type="button" class="btn btn-sm btn-outline-info" id="set-downbeat" disabled>Set Downbeat</button>
         </div>
+      </div>
+      <div class="row justify-content-center mb-2" id="audio-status-row">
+        <span id="audio-status" role="status" aria-live="polite">Downloading audio…</span>
+        <button type="button" class="btn btn-sm btn-outline-info ml-2" id="retry-audio" hidden>Retry download</button>
       </div>
       <div class="row justify-content-center">
         <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause, q/w/e to change speed, +/- to change overview waveform width</div>

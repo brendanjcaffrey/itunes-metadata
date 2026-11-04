@@ -69,7 +69,12 @@ class Server < Sinatra::Base
   end
 
   get '/audio/:id' do
-    send_file analysis_file(:audio), type: :wav
+    file = settings.analysis_queue.playback_file(params[:id].upcase)
+    send_file file, type: File.extname(file).delete_prefix('.').downcase.to_sym
+  end
+
+  get '/audio-download.js' do
+    send_file File.join(__dir__, 'audio-download.js'), type: 'application/javascript'
   end
 
   get '/waveform/:id.dat' do
