@@ -453,28 +453,28 @@
             growOverview();
           } else if (e.key === '-') {
             shrinkOverview();
-          } else if (e.key === '1') {
+          } else if (e.key === 'z') {
             e.preventDefault();
             jumpBeats(4);
-          } else if (e.key === '2') {
+          } else if (e.key === 'x') {
             e.preventDefault();
             jumpBeats(8);
-          } else if (e.key === '3') {
+          } else if (e.key === 'c') {
             e.preventDefault();
             jumpBeats(16);
-          } else if (e.key === '4') {
+          } else if (e.key === 'v') {
             e.preventDefault();
             jumpBeats(32);
-          } else if (e.key === '!') {
+          } else if (e.key === 'Z') {
             e.preventDefault();
             jumpBeats(-4);
-          } else if (e.key === '@') {
+          } else if (e.key === 'X') {
             e.preventDefault();
             jumpBeats(-8);
-          } else if (e.key === '#') {
+          } else if (e.key === 'C') {
             e.preventDefault();
             jumpBeats(-16);
-          } else if (e.key === '$') {
+          } else if (e.key === 'V') {
             e.preventDefault();
             jumpBeats(-32);
           } else if (e.key === 'b') {
@@ -563,7 +563,7 @@
         <div class="alert alert-light tiny">s/f to set, a/d/g to preview, space to play/pause, q/w/e to change speed, +/- to change overview waveform width</div>
       </div>
       <div class="row justify-content-center">
-        <div class="alert alert-light tiny">1/2/3/4 to jump forward 4/8/16/32 beats (shift to jump back), b to set the downbeat</div>
+        <div class="alert alert-light tiny">z/x/c/v to jump forward 4/8/16/32 beats (shift to jump back), b to set the downbeat</div>
       </div>
       <div class="row justify-content-center">
         <form action="/track/<%= track_id %>" method="post">
