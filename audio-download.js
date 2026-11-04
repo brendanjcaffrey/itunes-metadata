@@ -33,7 +33,7 @@ function pcmWaveBlob(buffer) {
 
 // Fetch the entire file before assigning a source to the media element. A blob
 // URL keeps subsequent playback and seeks local, independent of network speed.
-async function downloadTrackAudio(audio, sourceUrl) {
+async function downloadTrackAudio(audio, sourceUrl, signal) {
   const controller = new AbortController();
   let objectUrl;
   let released = false;
@@ -42,6 +42,7 @@ async function downloadTrackAudio(audio, sourceUrl) {
     if (released) { return; }
     released = true;
     controller.abort();
+    signal?.removeEventListener('abort', release);
     window.removeEventListener('pagehide', onPageHide);
     audio.pause();
     audio.removeAttribute('src');
@@ -56,7 +57,9 @@ async function downloadTrackAudio(audio, sourceUrl) {
   }
 
   window.addEventListener('pagehide', onPageHide);
+  signal?.addEventListener('abort', release, { once: true });
   try {
+    if (signal?.aborted) { throw new DOMException('Download cancelled', 'AbortError'); }
     const response = await fetch(sourceUrl, { signal: controller.signal, cache: 'no-store' });
     if (!response.ok) { throw new Error(`HTTP ${response.status}`); }
     let blob = await response.blob();
@@ -89,6 +92,7 @@ async function downloadTrackAudio(audio, sourceUrl) {
       audio.load();
     });
     await ready;
+    return release;
   } catch (error) {
     release();
     throw error;

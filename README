@@ -14,14 +14,18 @@ Audio, waveforms and beat grids are cached by Music's persistent track ID and
 reused across restarts and tag/path changes. New files are published atomically,
 so interrupted work is retried rather than served as a completed result.
 
-Playback serves the original MP3 when available, with the cached WAV as a
-fallback for other source formats. The track page downloads the complete audio
-file when opened. To avoid inaccurate variable-bitrate MP3 seeks in Firefox,
-it decodes downloaded MP3s once in the browser and plays a local PCM WAV blob.
-The WAV is created locally, so only the smaller original MP3 crosses the
-network. This uses additional browser memory while the page is open. Playback
-controls enable after loading; failed downloads show a retry button. Cached
-server WAVs still provide the input for waveform and BPM analysis.
+Playback defaults to downloading the cached WAV for fast startup on local
+networks. A compact selector beside the player switches between WAV and MP3;
+the preference is saved in local storage for this browser and site. Switching
+redownloads the current audio, preserves the playhead and unsaved metadata,
+and pauses playback. Both modes download the complete file before playing.
+MP3 mode serves the original MP3 when available (WAV for other source formats).
+To avoid inaccurate variable-bitrate MP3 seeks in Firefox, it decodes the MP3
+once in the browser and plays a local PCM WAV blob. This saves bandwidth but
+adds processing time and browser memory use. Playback controls enable after
+loading; failed downloads show a retry button. GET /audio/:id defaults to WAV;
+?format=mp3 selects the smaller original. Waveform and BPM analysis always use
+the cached server WAV.
 
 The playlist refreshes every 60 seconds in a separate background thread. Set
 PLAYLIST_REFRESH_INTERVAL to change the interval in seconds. Refreshes queue new

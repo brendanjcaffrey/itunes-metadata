@@ -58,7 +58,7 @@ class ServerTest < AnalysisTest
     @queue.start
     assert_equal A, next_started
 
-    response = @request.get("/audio/#{A.downcase}")
+    response = @request.get("/audio/#{A.downcase}?format=mp3")
     assert_equal 200, response.status
     assert_equal 'audio/mpeg', response['content-type']
     assert_equal 'original MP3 bytes', response.body
@@ -72,7 +72,7 @@ class ServerTest < AnalysisTest
     @library.source = File.join(@root, 'original.mp3')
     File.write(@library.source, 'original MP3 bytes')
 
-    response = @request.get("/audio/#{A}")
+    response = @request.get("/audio/#{A}?format=mp3")
     assert_equal 200, response.status
     assert_equal 'audio/mpeg', response['content-type']
     assert_equal 'original MP3 bytes', response.body
@@ -85,7 +85,7 @@ class ServerTest < AnalysisTest
     @library.tracks = [@library.tracks.first]
     @library.source = File.join(@root, 'missing.mp3')
 
-    response = @request.get("/audio/#{A}")
+    response = @request.get("/audio/#{A}?format=mp3")
     assert_equal 200, response.status
     assert_equal 'audio/wav', response['content-type']
     assert_equal 'cached audio', response.body
@@ -96,6 +96,27 @@ class ServerTest < AnalysisTest
     assert_equal 200, response.status
     assert_includes response['content-type'], 'application/javascript'
     assert_equal File.read(File.expand_path('../audio-download.js', __dir__)), response.body
+  end
+
+  def test_wav_is_the_default_even_when_an_original_mp3_is_available
+    cache(A)
+    @library.tracks = [@library.tracks.first]
+    @library.source = File.join(@root, 'original.mp3')
+    File.write(@library.source, 'original MP3 bytes')
+
+    ["/audio/#{A}", "/audio/#{A}?format=wav"].each do |url|
+      response = @request.get(url)
+      assert_equal 200, response.status
+      assert_equal 'audio/wav', response['content-type']
+      assert_equal 'cached audio', response.body
+    end
+    assert_empty @library.lookups
+    assert_empty @analyzer.calls
+  end
+
+  def test_unsupported_audio_format_is_rejected
+    response = @request.get("/audio/#{A}?format=flac")
+    assert_equal 400, response.status
   end
 
   def test_unknown_tracks_return_json_404

@@ -148,3 +148,31 @@ test('cancels an unfinished download when navigating away', async () => {
   await cancelled;
   assert.equal(fixture.blobs.length, 0);
 });
+
+test('switching formats during MP3 decoding cannot replace or release the newer WAV source', async () => {
+  let finishDecoding;
+  class Decoder {
+    decodeAudioData() { return new Promise(resolve => { finishDecoding = resolve; }); }
+  }
+  const fixture = setup(async url => ({
+    ok: true,
+    blob: async () => new Blob(['audio'], { type: url.endsWith('mp3') ? 'audio/mpeg' : 'audio/wav' })
+  }), { OfflineAudioContext: Decoder });
+  const controller = new AbortController();
+  const first = fixture.downloadTrackAudio(fixture.audio, '/audio/id?format=mp3', controller.signal);
+  const cancelled = assert.rejects(first, { name: 'AbortError' });
+  await flush();
+  controller.abort();
+  const second = fixture.downloadTrackAudio(fixture.audio, '/audio/id?format=wav');
+  await flush();
+  fixture.audio.dispatchEvent(new Event('loadedmetadata'));
+  const release = await second;
+  finishDecoding({});
+  await cancelled;
+  assert.equal(fixture.audio.src, 'blob:local-audio');
+  assert.equal(fixture.blobs.length, 1);
+  assert.deepEqual(fixture.revoked, []);
+  release();
+  release();
+  assert.deepEqual(fixture.revoked, ['blob:local-audio'], 'releasing a source is idempotent');
+});

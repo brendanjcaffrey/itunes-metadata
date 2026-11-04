@@ -24,6 +24,7 @@
       div#overview-container { width: 100vw; height: 50px; position: absolute; left: 0; margin-top: 100px; }
       div.under-overview { margin-top: 150px; }
       div#controls { margin: 4px auto; }
+      #audio-format { width: auto; vertical-align: middle; }
       div#beat-controls { margin: 4px auto; flex-basis: 100%; text-align: center; }
       div#beat-controls .btn-group { margin-right: 6px; }
       canvas#beat-grid { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; }
@@ -167,21 +168,65 @@
         const audio = document.getElementById('audio');
         const audioStatus = document.getElementById('audio-status');
         const retryAudio = document.getElementById('retry-audio');
-        while (true) {
-          audioStatus.textContent = 'Downloading audio…';
+        const audioFormat = document.getElementById('audio-format');
+        let playerReady = false;
+        let waveformReady = false;
+        let audioReady = false;
+        let loadController;
+        let releaseAudio;
+        let resumeTime = 0;
+        let resumeSpeed = 1;
+        let resolveFirstAudio;
+        const firstAudio = new Promise(resolve => { resolveFirstAudio = resolve; });
+        try {
+          audioFormat.value = localStorage.getItem('audio-download-format') === 'mp3' ? 'mp3' : 'wav';
+        } catch (_) { audioFormat.value = 'wav'; }
+
+        function updatePlayerState() {
+          playerReady = waveformReady && audioReady;
+          document.getElementById('audio-status-row').hidden = playerReady;
+          $('#controls button, #controls input').prop('disabled', !playerReady);
+          $('#beat-controls button').prop('disabled', !playerReady || !beatGrid);
+        }
+
+        async function loadAudio() {
+          if (audioReady) {
+            resumeTime = audio.currentTime;
+            resumeSpeed = audio.playbackRate;
+          }
+          audioReady = false;
+          savedTime = -1;
+          loadController?.abort();
+          releaseAudio?.();
+          const controller = new AbortController();
+          loadController = controller;
+          updatePlayerState();
+          audioStatus.textContent = `Downloading ${audioFormat.value.toUpperCase()} audio…`;
           retryAudio.hidden = true;
           try {
-            await downloadTrackAudio(audio, '/audio/<%= track_id %>');
-            break;
+            const release = await downloadTrackAudio(audio,
+              `/audio/<%= track_id %>?format=${audioFormat.value}`, controller.signal);
+            if (controller.signal.aborted) { release(); return; }
+            releaseAudio = release;
+            audio.currentTime = Math.max(0, Math.min(resumeTime, audio.duration));
+            audio.playbackRate = resumeSpeed;
+            audioReady = true;
+            audioStatus.textContent = 'Audio downloaded · loading waveform…';
+            updatePlayerState();
+            resolveFirstAudio();
           } catch (error) {
-            if (error.name === 'AbortError') { return; }
+            if (controller.signal.aborted || error.name === 'AbortError') { return; }
             audioStatus.textContent = `Audio download failed: ${error.message}`;
             retryAudio.hidden = false;
-            await new Promise(resolve => retryAudio.addEventListener('click', resolve, { once: true }));
           }
         }
-        audioStatus.textContent = 'Audio downloaded · loading waveform…';
-        let playerReady = false;
+        audioFormat.addEventListener('change', () => {
+          try { localStorage.setItem('audio-download-format', audioFormat.value); } catch (_) {}
+          loadAudio();
+        });
+        retryAudio.addEventListener('click', loadAudio);
+        loadAudio();
+        await firstAudio;
         const options = {
           zoomview: {
             container: document.getElementById('zoomview-container'),
@@ -214,10 +259,9 @@
             console.error('Failed to initialize Peaks instance: ' + err.message);
             return;
           }
-          playerReady = true;
+          waveformReady = true;
+          updatePlayerState();
           updateStartFinishPoints();
-          document.getElementById('audio-status-row').hidden = true;
-          $('#controls button, #controls input').prop('disabled', false);
         });
         var savedTime = -1;
         var playing = false;
@@ -367,14 +411,14 @@
           }
         }
         function jumpBeats(delta) {
-          if (!beatPeriod()) { return; }
+          if (!playerReady || !beatPeriod()) { return; }
           var audio = document.getElementById("audio");
           var target = beatTimeAt(beatNumberAt(audio.currentTime) + delta);
           if (isFinite(audio.duration)) { target = Math.min(target, audio.duration - 0.01); }
           audio.currentTime = Math.max(0, target);
         }
         function setDownbeat() {
-          if (!beatPeriod()) { return; }
+          if (!playerReady || !beatPeriod()) { return; }
           barOffset = ((beatNumberAt(document.getElementById("audio").currentTime) % 4) + 4) % 4;
           drawBeatGrid();
         }
@@ -424,13 +468,14 @@
             status += ` — was tagged ${tagged}`;
           }
           $("#beat-status").text(status);
-          $("#beat-controls button, #halve-bpm, #double-bpm").prop("disabled", false);
+          $("#halve-bpm, #double-bpm").prop("disabled", false);
+          updatePlayerState();
           drawBeatGrid();
         }).catch(() => $("#beat-status").text("beat detection failed"));
         $("#shrink-overview").click(shrinkOverview);
 
         $(window).keypress((e) => {
-          if (!playerReady || $(e.target).is("input")) { return; }
+          if (!playerReady || $(e.target).is("input, select, textarea, button")) { return; }
           if (e.key === ' ' || e.key === 'Spacebar') {
             e.preventDefault();
             togglePlayPause();
@@ -483,7 +528,7 @@
           }
         });
         $(window).keydown((e) => {
-          if (!playerReady || $(e.target).is("input") || savedTime != -1) { return; }
+          if (!playerReady || $(e.target).is("input, select, textarea, button") || savedTime != -1) { return; }
           var newSavedTime = -1;
           var audio = document.getElementById("audio");
           if (e.key === 'a') {
@@ -500,7 +545,7 @@
           audio.play();
         });
         $(window).keyup((e) => {
-          if ($(e.target).is("input")) { return; }
+          if ($(e.target).is("input, select, textarea, button")) { return; }
           if ( (e.key === 'a' || e.key === 'd' || e.key === 'g') && savedTime != -1) {
             audio.pause();
             audio.currentTime = savedTime;
@@ -538,6 +583,11 @@
 
           <button type="button" class="btn btn-sm btn-outline-dark" id="shrink-overview" disabled><i class="fa fa-minus"></i></button>
           <button type="button" class="btn btn-sm btn-outline-dark" id="grow-overview" disabled><i class="fa fa-plus"></i></button>
+          <label for="audio-format" class="sr-only">Audio download format</label>
+          <select id="audio-format" class="custom-select custom-select-sm ml-2" title="WAV loads fastest on local networks. MP3 saves bandwidth and is converted in your browser for accurate seeking.">
+            <option value="wav">WAV · fast startup</option>
+            <option value="mp3">MP3 · smaller download</option>
+          </select>
         </div>
         <div id="beat-controls">
           <div class="btn-group btn-group-sm" role="group">

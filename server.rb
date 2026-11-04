@@ -69,7 +69,11 @@ class Server < Sinatra::Base
   end
 
   get '/audio/:id' do
-    file = settings.analysis_queue.playback_file(params[:id].upcase)
+    file = case params.fetch('format', 'wav')
+           when 'wav' then analysis_file(:audio)
+           when 'mp3' then settings.analysis_queue.playback_file(params[:id].upcase)
+           else halt 400, 'Unknown audio format'
+           end
     send_file file, type: File.extname(file).delete_prefix('.').downcase.to_sym
   end
 
