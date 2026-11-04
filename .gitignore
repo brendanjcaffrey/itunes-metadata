@@ -3,4 +3,7 @@ artwork/*.jpg
 waveforms/*.dat
 beats/*.json
 audio/*.wav
+audio/*.wip
+waveforms/*.tmp.dat
+beats/*.tmp.json
 .DS_Store

@@ -1,5 +1,33 @@
 * brew tap bbc/audiowaveform
 * brew install audiowaveform
+* brew install ffmpeg aubio
 * bundle
 * update PLAYLIST_ID in server.rb
 * rake
+
+At startup, the server queues every track in PLAYLIST_ID for WAV conversion,
+waveform generation and BPM/beat-grid analysis. One background worker processes
+the queue; opening a track or requesting one of its analysis files moves it to
+the front of the waiting queue. Work already in progress finishes first.
+
+Audio, waveforms and beat grids are cached by Music's persistent track ID and
+reused across restarts and tag/path changes. New files are published atomically,
+so interrupted work is retried rather than served as a completed result.
+
+The playlist refreshes every 60 seconds in a separate background thread. Set
+PLAYLIST_REFRESH_INTERVAL to change the interval in seconds. Refreshes queue new
+tracks, retry failures, update track descriptions and delete cached audio,
+waveforms, beat grids and artwork for removed tracks. An active removed track
+is cleaned up when its current work finishes. If Music cannot be read, the
+previous playlist and caches are kept until a successful refresh.
+
+Saving the track form immediately updates the cached title/artist description
+used by the main view and status endpoint, without rerunning audio analysis.
+
+GET /api/status reports per-track stages, available artifacts, detected BPM,
+queue order, errors and playlist refresh time. The main view polls it every
+three seconds to show analysis progress and playlist changes. Analysis file
+requests return 503 on failure or after a five-minute wait (with Retry-After),
+and 404 for tracks outside the playlist.
+
+Run the tests with rake test.

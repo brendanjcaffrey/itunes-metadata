@@ -5,18 +5,12 @@ PLAYLIST_TRACKS = <<-SCRIPT
   set output to ""
 
   tell application "Music"
-    repeat with thisPlaylist in user playlists
-      try
-        if persistent ID of thisPlaylist is not equal to "%s" then
-          error 0
-        end if
-        repeat with thisTrack in file tracks of thisPlaylist
-          set output to output & persistent ID of thisTrack & "::"
-          set output to output & date added of thisTrack & "::"
-          set output to output & artist of thisTrack & " - "
-          set output to output & name of thisTrack & "\n"
-        end repeat
-      end try
+    set thisPlaylist to item 1 of (every user playlist whose persistent ID is "%s")
+    repeat with thisTrack in file tracks of thisPlaylist
+      set output to output & persistent ID of thisTrack & "::"
+      set output to output & date added of thisTrack & "::"
+      set output to output & artist of thisTrack & " - "
+      set output to output & name of thisTrack & "\n"
     end repeat
   end tell
 

@@ -6,14 +6,81 @@
       .container { margin-top: 8px; }
       a.btn { margin: 4px; }
       .last-viewed { font-weight: bold; }
+      .track-status { margin-left: 8px; font-size: 80%; color: #6c757d; }
+      #analysis-status { font-size: 90%; margin-bottom: 8px; }
     </style>
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script type="text/javascript">
       $(document).ready(() => {
-        const lastViewed = $('.last-viewed');
-        if (lastViewed.length > 0) {
-          lastViewed[0].scrollIntoView({ behavior: 'instant', block: 'center' });
+        const lastViewedId = <%= JSON.generate(last_viewed) %>;
+        const reverse = <%= JSON.generate(reverse) %>;
+        const list = document.getElementById('playlist-tracks');
+        const summary = document.getElementById('analysis-status');
+        let scrolledToLastViewed = false;
+
+        function scrollToLastViewed() {
+          const lastViewed = document.querySelector('.last-viewed');
+          if (lastViewed && !scrolledToLastViewed) {
+            lastViewed.scrollIntoView({ behavior: 'instant', block: 'center' });
+            scrolledToLastViewed = true;
+          }
         }
+        scrollToLastViewed();
+
+        function renderStatus(status) {
+          document.getElementById('track-count').textContent =
+            `${status.total} new track${status.total === 1 ? '' : 's'}`;
+          summary.textContent = `${status.analyzed} / ${status.total} analyzed · ` +
+            `${status.queued} queued · ${status.failed} failed` +
+            (status.active ? ' · analysis in progress' : '') +
+            (status.refresh_error ? ` · Playlist refresh failed: ${status.refresh_error}` : '');
+
+          const tracks = reverse ? status.tracks.slice().reverse() : status.tracks;
+          const rows = new Map(Array.from(list.children, row => [row.dataset.id, row]));
+          const stages = { queued: 'Queued', analyzing: 'Analyzing', converting: 'Converting WAV', waveform: 'Generating waveform', bpm: 'Analyzing BPM', analyzed: 'Analyzed', failed: 'Failed' };
+          tracks.forEach((track, index) => {
+            let row = rows.get(track.id);
+            if (!row) {
+              row = document.createElement('li');
+              row.dataset.id = track.id;
+              const link = document.createElement('a');
+              link.href = `/track/${encodeURIComponent(track.id)}`;
+              row.appendChild(link);
+              const progress = document.createElement('span');
+              progress.className = 'track-status';
+              row.appendChild(progress);
+            }
+            row.classList.toggle('last-viewed', track.id === lastViewedId);
+            row.querySelector('a').textContent = track.description;
+            const progress = row.querySelector('.track-status');
+            const artifacts = `WAV: ${track.audio ? 'ready' : 'pending'}, waveform: ${track.waveform ? 'ready' : 'pending'}, BPM analysis: ${track.beats ? 'ready' : 'pending'}`;
+            progress.textContent = stages[track.state] || track.state;
+            if (track.beats) {
+              progress.textContent += track.bpm ? ` · ${track.bpm} BPM` : ' · no BPM detected';
+            }
+            progress.title = track.error ? `${artifacts}. ${track.error}` : artifacts;
+            progress.classList.toggle('text-danger', track.state === 'failed');
+            if (list.children[index] !== row) {
+              list.insertBefore(row, list.children[index] || null);
+            }
+            rows.delete(track.id);
+          });
+          rows.forEach(row => row.remove());
+          scrollToLastViewed();
+        }
+
+        async function refreshStatus() {
+          try {
+            const response = await fetch('/api/status', { cache: 'no-store' });
+            if (!response.ok) { throw new Error(`HTTP ${response.status}`); }
+            renderStatus(await response.json());
+          } catch (error) {
+            summary.textContent = `Analysis status unavailable: ${error.message}. Retrying…`;
+          } finally {
+            setTimeout(refreshStatus, 3000);
+          }
+        }
+        refreshStatus();
       });
     </script>
   </head>
@@ -21,14 +88,15 @@
     <div class="container">
       <div class="row">
         <h5>
-          <%= playlist_tracks.size %> new track<%= playlist_tracks.size == 1 ? '' : 's' %>
+          <span id="track-count"><%= playlist_tracks.size %> new track<%= playlist_tracks.size == 1 ? '' : 's' %></span>
           <a href="/reverse"><ion-icon name="arrow-<%= reverse ? 'up' : 'down' %>-outline" size="small"></ion-icon></a>
         </h5>
       </div>
+      <div id="analysis-status" role="status" aria-live="polite">Loading analysis status…</div>
       <div class="row">
-        <ul>
+        <ul id="playlist-tracks">
         <% playlist_tracks.each do |track| %>
-          <li<%= ' class="last-viewed"' if track.id == last_viewed %>><a href="/track/<%= track.id %>"><%= track.desc %></li>
+          <li data-id="<%= track.id %>"<%= ' class="last-viewed"' if track.id == last_viewed %>><a href="/track/<%= track.id %>"><%= HTMLEntities.new.encode(track.desc) %></a><span class="track-status">Loading…</span></li>
         <% end %>
         </ul>
       </div>

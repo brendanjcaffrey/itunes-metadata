@@ -3,25 +3,9 @@ require 'sinatra'
 require_relative 'server'
 
 task :default do
-  Dir.foreach('artwork') do |f|
-    next if f[0] == '.'
-    File.delete('artwork/' + f)
-  end
-
-  Dir.foreach('waveforms') do |f|
-    next if f[0] == '.'
-    File.delete('waveforms/' + f)
-  end
-
-  Dir.foreach('beats') do |f|
-    next if f[0] == '.'
-    File.delete('beats/' + f)
-  end
-
-  Dir.foreach('audio') do |f|
-    next if f[0] == '.'
-    File.delete('audio/' + f)
-  end
-
   Server.run!
+end
+
+task :test do
+  ruby '-Itest', '-e', 'Dir["test/*_test.rb"].sort.each { |file| require_relative file }'
 end

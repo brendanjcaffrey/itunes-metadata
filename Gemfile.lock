@@ -4,6 +4,7 @@ GEM
     base64 (0.3.0)
     htmlentities (4.3.4)
     logger (1.7.0)
+    minitest (5.27.0)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
     rack (3.2.6)
@@ -33,6 +34,7 @@ PLATFORMS
 
 DEPENDENCIES
   htmlentities
+  minitest (~> 5.20)
   rackup
   rake
   sinatra
